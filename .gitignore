@@ -1,0 +1,38 @@
+# Dart and Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+coverage/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Apple / Xcode
+.DS_Store
+DerivedData/
+ios/Flutter/ephemeral/
+ios/Pods/
+macos/Flutter/ephemeral/
+
+# Android
+android/.gradle/
+android/local.properties
+*.jks
+*.keystore
+
+# Secrets and environment overrides
+.env
+.env.*
+!.env.example
+*.p12
+*.mobileprovision
+secrets/
+
+# Logs and temporary files
+*.log
+*.tmp
