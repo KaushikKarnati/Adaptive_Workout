@@ -1,121 +1,92 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'features/workout/sample_workout_flow.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+void main() => runApp(const AdaptiveWorkoutApp());
 
-  // This widget is the root of your application.
+class AdaptiveWorkoutApp extends StatelessWidget {
+  const AdaptiveWorkoutApp({super.key});
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Adaptive Workout',
+    debugShowCheckedModeBanner: false,
+    themeMode: ThemeMode.system,
+    theme: _appTheme(Brightness.light),
+    darkTheme: _appTheme(Brightness.dark),
+    home: const SampleWorkoutFlow(),
+  );
+
+  ThemeData _appTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final background = isDark
+        ? const Color(0xFF090D10)
+        : const Color(0xFFF2F2F7);
+    final surface = isDark ? const Color(0xFF141A1F) : Colors.white;
+    final accent = isDark ? const Color(0xFFB8F36B) : const Color(0xFF477A16);
+    final colors =
+        ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: brightness,
+          surface: surface,
+        ).copyWith(
+          primary: accent,
+          onPrimary: isDark ? const Color(0xFF122000) : Colors.white,
+          surface: surface,
+          onSurface: isDark ? const Color(0xFFF4F7F2) : const Color(0xFF171A1C),
+          outline: isDark ? const Color(0xFF566169) : const Color(0xFF74777A),
+        );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: colors,
+      scaffoldBackgroundColor: background,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      textTheme: const TextTheme(
+        displaySmall: TextStyle(
+          fontSize: 38,
+          height: 1.05,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.2,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 28,
+          height: 1.1,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.6,
+        ),
+        titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        bodyLarge: TextStyle(fontSize: 17, height: 1.45),
+        bodyMedium: TextStyle(fontSize: 15, height: 1.4),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(22)),
+          side: BorderSide(
+            color: isDark ? const Color(0xFF303940) : const Color(0xFFD5D8DB),
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
       ),
     );
   }

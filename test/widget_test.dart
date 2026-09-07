@@ -1,30 +1,175 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:adaptive_workout/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:adaptive_workout/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('completes sample flow and preserves logged values', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    expect(find.text('Your next workout, made clear.'), findsOneWidget);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preview_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.tap(find.byKey(const Key('load_plus')));
+    await tester.tap(find.byKey(const Key('reps_plus')));
+    await tester.tap(find.byKey(const Key('rir_minus')));
+    await tester.tap(find.byKey(const Key('log_set')));
     await tester.pump();
+    expect(find.text('Logged: 170 lb × 7 @ 1 RIR'), findsOneWidget);
+    expect(find.byKey(const Key('rest_timer')), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('finish_workout')),
+      150,
+    );
+    await tester.tap(find.byKey(const Key('finish_workout')));
+    await tester.pumpAndSettle();
+    expect(find.text('Workout complete'), findsOneWidget);
+    expect(find.text('Last set: 170 lb × 7 @ 1 RIR'), findsOneWidget);
+  });
+
+  testWidgets('back navigation keeps mock session values', (tester) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preview_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('load_plus')));
+    await tester.pump();
+    expect(find.text('170 lb'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('flow_back')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
+    expect(find.text('170 lb'), findsOneWidget);
+  });
+
+  testWidgets('returning to Today resets the temporary sample session', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preview_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('load_plus')));
+    await tester.tap(find.byKey(const Key('log_set')));
+    await tester.pump();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('finish_workout')),
+      150,
+    );
+    await tester.tap(find.byKey(const Key('finish_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('return_today')),
+      150,
+      scrollable: find
+          .descendant(
+            of: find.byType(SingleChildScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(find.byKey(const Key('return_today')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('preview_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('165 lb'), findsOneWidget);
+    expect(find.textContaining('Logged:'), findsNothing);
+  });
+
+  testWidgets('secondary navigation shows labeled placeholders', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('This area is a placeholder for a later milestone.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('welcome and today screens fit a narrow phone viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.scrollUntilVisible(find.byKey(const Key('get_started')), 100);
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('preview_workout')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('critical flow remains usable with large Dynamic Type', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.scrollUntilVisible(find.byKey(const Key('get_started')), 150);
+    await tester.tap(find.byKey(const Key('get_started')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('preview_workout')),
+      150,
+    );
+    await tester.tap(find.byKey(const Key('preview_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('start_workout')),
+      200,
+    );
+
+    expect(find.byKey(const Key('start_workout')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

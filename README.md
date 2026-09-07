@@ -4,9 +4,9 @@ An offline-first mobile application that generates deterministic, evidence-infor
 
 ## Current status
 
-Step 1 — repository foundation.
+Step 1 foundation plus a sample-only workout interface for iPhone UX testing.
 
-No workout features have been implemented yet. Product and scientific rules must be approved before they become application logic.
+The current Welcome → Today → Preview → Active → Completion flow uses fixed illustrative data and does not save workouts or generate recommendations. Product and scientific rules must be approved before they become application logic.
 
 ## Planned stack
 
