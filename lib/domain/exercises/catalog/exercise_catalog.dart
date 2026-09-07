@@ -12,6 +12,32 @@ enum Benchmark {
   conventionalBarbellDeadlift,
 }
 
+final class ExerciseCatalogManifest {
+  const ExerciseCatalogManifest({
+    required this.schemaVersion,
+    required this.catalogVersion,
+    this.taxonomyVersion = 'v2',
+    this.provider = 'wger',
+    required this.upstreamBaseUrl,
+    required this.retrievedAt,
+    required this.sourceRevision,
+    required this.entryCount,
+    required this.contentSha256,
+    required this.importToolVersion,
+  });
+
+  final String schemaVersion;
+  final String catalogVersion;
+  final String taxonomyVersion;
+  final String provider;
+  final Uri upstreamBaseUrl;
+  final DateTime retrievedAt;
+  final String? sourceRevision;
+  final int entryCount;
+  final String contentSha256;
+  final String importToolVersion;
+}
+
 final class CatalogReview {
   const CatalogReview({
     required this.status,

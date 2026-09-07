@@ -186,9 +186,12 @@ final class ExerciseCatalogValidator {
     }
     _validateWgerUrl(entry.wgerApiUrl, 'wgerApiUrl', issues);
     _validateWgerUrl(entry.wgerPageUrl, 'wgerPageUrl', issues);
-    if (entry.sourceModifiedAt != null &&
-        entry.sourceModifiedAt!.toUtc().isAfter(importedAt.toUtc())) {
-      issue('future_timestamp', 'sourceModifiedAt');
+    if (entry.sourceModifiedAt != null) {
+      if (!_isSecondPrecisionUtc(entry.sourceModifiedAt!)) {
+        issue('invalid_timestamp', 'sourceModifiedAt');
+      } else if (entry.sourceModifiedAt!.isAfter(importedAt.toUtc())) {
+        issue('future_timestamp', 'sourceModifiedAt');
+      }
     }
     _validateText(entry.name, 'name', 80, issues);
     if (entry.aliases.length > 20) issue('too_many_values', 'aliases');
@@ -370,7 +373,9 @@ final class ExerciseCatalogValidator {
     if (!_stableId.hasMatch(review.reviewerId!)) {
       issues.add(CatalogValidationIssue('invalid_reviewer_id', field));
     }
-    if (review.reviewedAt!.toUtc().isAfter(importedAt.toUtc())) {
+    if (!_isSecondPrecisionUtc(review.reviewedAt!)) {
+      issues.add(CatalogValidationIssue('invalid_timestamp', field));
+    } else if (review.reviewedAt!.isAfter(importedAt.toUtc())) {
       issues.add(CatalogValidationIssue('future_timestamp', field));
     }
     _validateEvidenceReference(review.evidenceReference!, field, issues);
@@ -478,4 +483,7 @@ final class ExerciseCatalogValidator {
       issues.add(CatalogValidationIssue('unsafe_text', field));
     }
   }
+
+  bool _isSecondPrecisionUtc(DateTime value) =>
+      value.isUtc && value.millisecond == 0 && value.microsecond == 0;
 }

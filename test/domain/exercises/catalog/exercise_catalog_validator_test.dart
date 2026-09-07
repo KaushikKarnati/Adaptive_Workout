@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:adaptive_workout/domain/exercises/catalog/catalog_integrity.dart';
 import 'package:adaptive_workout/domain/exercises/catalog/exercise_catalog.dart';
+import 'package:adaptive_workout/domain/exercises/catalog/exercise_catalog_manifest_validator.dart';
 import 'package:adaptive_workout/domain/exercises/catalog/exercise_catalog_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -130,17 +134,143 @@ void main() {
     );
     expect(entry.isSelectable, isFalse);
   });
+
+  group('catalog manifest validation', () {
+    final manifestValidator = ExerciseCatalogManifestValidator(
+      importedAt: importedAt,
+    );
+
+    test('accepts matching manifest, entry count, and integrity digest', () {
+      final entries = <ExerciseCatalogEntry>[validEntry()];
+      final manifest = validManifest(entries);
+
+      expect(manifestValidator.validate(manifest, entries), isEmpty);
+    });
+
+    test('SHA-256 implementation matches a published test vector', () {
+      expect(
+        sha256Hex(utf8.encode('abc')),
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+      );
+    });
+
+    test('detects all catalog identity duplicates and benchmark reuse', () {
+      final entry = validEntry();
+      final entries = <ExerciseCatalogEntry>[entry, entry];
+      final issues = manifestValidator.validate(
+        validManifest(entries),
+        entries,
+      );
+      final duplicateFields = issues
+          .where((issue) => issue.code == 'duplicate_value')
+          .map((issue) => issue.field);
+
+      expect(duplicateFields, contains('entries.1.id'));
+      expect(duplicateFields, contains('entries.1.wgerBaseId'));
+      expect(duplicateFields, contains('entries.1.wgerBaseUuid'));
+      expect(duplicateFields, contains('entries.1.wgerTranslationId'));
+      expect(duplicateFields, contains('entries.1.wgerTranslationUuid'));
+      expect(duplicateFields, contains('entries.1.benchmark'));
+    });
+
+    test('rejects entry-count mismatch and out-of-range count', () {
+      final entries = <ExerciseCatalogEntry>[validEntry()];
+      final manifest = validManifest(entries, entryCount: 0);
+      final codes = manifestValidator
+          .validate(manifest, entries)
+          .map((issue) => issue.code);
+
+      expect(codes, contains('entry_count_out_of_range'));
+      expect(codes, contains('entry_count_mismatch'));
+    });
+
+    test('rejects a well-formed but incorrect digest', () {
+      final entries = <ExerciseCatalogEntry>[validEntry()];
+      final manifest = validManifest(entries, contentSha256: '0' * 64);
+
+      expect(
+        manifestValidator
+            .validate(manifest, entries)
+            .map((issue) => issue.code),
+        contains('integrity_digest_mismatch'),
+      );
+    });
+
+    test('rejects an impossible calendar date in the catalog version', () {
+      final entries = <ExerciseCatalogEntry>[validEntry()];
+      final manifest = validManifest(entries, catalogVersion: '2026.02.31.1');
+
+      expect(
+        manifestValidator
+            .validate(manifest, entries)
+            .map((issue) => issue.code),
+        contains('invalid_catalog_version'),
+      );
+    });
+
+    test('passes configured evidence hosts to entry validation', () {
+      const allowedHost = 'evidence.example.com';
+      final entry = validEntry(
+        safetyReview: CatalogReview(
+          status: ReviewStatus.approved,
+          reviewerId: 'reviewer_one',
+          reviewedAt: DateTime.utc(2026, 9, 7, 10),
+          evidenceReference: 'https://$allowedHost/reviews/bench-press',
+        ),
+      );
+      final entries = <ExerciseCatalogEntry>[entry];
+      final validatorWithEvidenceHost = ExerciseCatalogManifestValidator(
+        importedAt: importedAt,
+        allowedEvidenceHosts: const {allowedHost},
+      );
+
+      expect(
+        validatorWithEvidenceHost.validate(validManifest(entries), entries),
+        isEmpty,
+      );
+    });
+
+    test(
+      'canonical digest is independent of entry and set iteration order',
+      () {
+        final first = validEntry(
+          aliases: const {'Bench', 'Barbell bench'},
+          secondaryMuscleIds: const {'front_deltoids', 'triceps'},
+        );
+        final second = validEntry(
+          id: 'wger_223e4567e89b42d3a456426614174000',
+          wgerBaseId: 3,
+          wgerBaseUuid: '223e4567-e89b-42d3-a456-426614174000',
+          wgerTranslationId: 4,
+          wgerTranslationUuid: '223e4567-e89b-42d3-a456-426614174001',
+          benchmark: null,
+        );
+        final forward = canonicalCatalogEntriesBytes([first, second]);
+        final reversed = canonicalCatalogEntriesBytes([second, first]);
+
+        expect(reversed, forward);
+        expect(sha256Hex(reversed), sha256Hex(forward));
+      },
+    );
+  });
 }
 
 ExerciseCatalogEntry validEntry({
+  String id = 'wger_123e4567e89b42d3a456426614174000',
+  int wgerBaseId = 1,
+  String wgerBaseUuid = '123e4567-e89b-42d3-a456-426614174000',
+  int wgerTranslationId = 2,
+  String wgerTranslationUuid = '123e4567-e89b-42d3-a456-426614174001',
   String name = 'Barbell bench press',
   String? instructions = 'Lower the bar under control.',
+  Set<String> aliases = const {},
   Set<String> movementPatternIds = const {'horizontal_push'},
   Set<String> secondaryMuscleIds = const {'triceps'},
   CatalogAttribution? baseAttribution,
   CatalogReview? safetyReview,
   ExerciseAvailability availability = ExerciseAvailability.enabled,
   String? disabledReason,
+  Benchmark? benchmark = Benchmark.flatBarbellBenchPress,
 }) {
   final approved = CatalogReview(
     status: ReviewStatus.approved,
@@ -156,15 +286,16 @@ ExerciseCatalogEntry validEntry({
     attributionSourceUrl: Uri.parse('https://wger.de/api/v2/exerciseinfo/1/'),
   );
   return ExerciseCatalogEntry(
-    id: 'wger_123e4567e89b42d3a456426614174000',
-    wgerBaseId: 1,
-    wgerBaseUuid: '123e4567-e89b-42d3-a456-426614174000',
-    wgerTranslationId: 2,
-    wgerTranslationUuid: '123e4567-e89b-42d3-a456-426614174001',
+    id: id,
+    wgerBaseId: wgerBaseId,
+    wgerBaseUuid: wgerBaseUuid,
+    wgerTranslationId: wgerTranslationId,
+    wgerTranslationUuid: wgerTranslationUuid,
     wgerApiUrl: Uri.parse('https://wger.de/api/v2/exerciseinfo/1/'),
     wgerPageUrl: Uri.parse('https://wger.de/en/exercise/2/view'),
     sourceModifiedAt: DateTime.utc(2026, 9, 6),
     name: name,
+    aliases: aliases,
     instructions: instructions,
     movementPatternIds: movementPatternIds,
     primaryMuscleIds: const {'chest'},
@@ -176,7 +307,7 @@ ExerciseCatalogEntry validEntry({
     laterality: Laterality.bilateral,
     trackingMode: TrackingMode.loadReps,
     variationGroupId: 'bench_press_variants',
-    benchmark: Benchmark.flatBarbellBenchPress,
+    benchmark: benchmark,
     baseAttribution: baseAttribution ?? attribution,
     translationAttribution: attribution,
     wasModified: false,
@@ -190,3 +321,20 @@ ExerciseCatalogEntry validEntry({
     disabledReason: disabledReason,
   );
 }
+
+ExerciseCatalogManifest validManifest(
+  List<ExerciseCatalogEntry> entries, {
+  int? entryCount,
+  String? contentSha256,
+  String catalogVersion = '2026.09.07.1',
+}) => ExerciseCatalogManifest(
+  schemaVersion: '1.0.0',
+  catalogVersion: catalogVersion,
+  upstreamBaseUrl: Uri.parse('https://wger.de/api/v2/'),
+  retrievedAt: DateTime.utc(2026, 9, 7, 11),
+  sourceRevision: null,
+  entryCount: entryCount ?? entries.length,
+  contentSha256:
+      contentSha256 ?? sha256Hex(canonicalCatalogEntriesBytes(entries)),
+  importToolVersion: '1.0.0',
+);
