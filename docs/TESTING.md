@@ -68,7 +68,7 @@ For exercise selection, tests must also cover:
 - Recommendation explanations match the rules that actually affected selection
 - Historical recommendations remain interpretable using their recorded rule-set and catalog versions
 - Catalog import is reproducible from the recorded wger snapshot identifier and produces the expected manifest and integrity digest
-- Every imported record retains its wger UUID, source URL, author, exact license and license URL, modification disclosure, and review status
+- Every imported record retains its wger base and translation IDs and UUIDs, API and page URLs, both attribution records, modification disclosure, and review status
 - Records with missing, unsupported, or inconsistent license metadata are rejected; attribution output covers every shipped wger-derived record
 - Imported HTML, active content, malformed URLs, unknown enums, invalid relationships, duplicate identifiers, and unsupported values are rejected or converted only through an explicitly tested allowlist
 - Wger images and videos are absent from the V1 bundle, and core workouts require no live wger network access
@@ -76,6 +76,9 @@ For exercise selection, tests must also cover:
 - Catalog contract tests cover every required field, allowed enum, referenced identifier, null-versus-empty rule, length bound, uniqueness constraint, and selectable-state invariant in `EXERCISE_CATALOG.md`
 - Property tests demonstrate that source-only and presentation-only fields cannot change exercise eligibility, ranking inputs, or recommendation output
 - Reordering catalog entries or set-valued identifiers does not change the validated entity set or deterministic recommendation output
+- Canonicalization tests sort entries and set-valued IDs before applying RFC 8785 and verify the expected lowercase SHA-256 digest from fixed fixtures
+- Boundary tests cover every maximum in `EXERCISE_TAXONOMIES.md`, including exact-limit acceptance, one-over rejection, entry-count limits, and decompressed-size limits
+- Wger mapping fixtures cover every source muscle, equipment, category, language, and license ID listed in `WGER_MAPPING.md`; an upstream ID/name mismatch fails import instead of silently remapping
 - A missed workout remains the next recommendation and shifts later workouts forward without changing their order
 - Schedule behavior depends on an explicit requested date and history rather than the wall clock
 - The initial two-person build remains functional without HealthKit authorization or health data

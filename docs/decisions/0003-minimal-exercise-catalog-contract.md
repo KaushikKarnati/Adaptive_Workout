@@ -21,7 +21,7 @@ Raw source models, import models, persistence models, domain entities, and prese
 - Catalog ingestion and validation can be deterministic and tested before exercise selection exists.
 - Upstream wording and metadata cannot silently become workout logic.
 - Review and licensing gaps produce disabled, omitted, or no-recommendation states rather than guesses.
-- Taxonomies, equipment identifiers, canonical serialization, and exact bounds remain bounded follow-up decisions.
+- Controlled taxonomies, equipment identifiers, canonical serialization, and exact bounds are approved in ADR 0004 and `docs/EXERCISE_TAXONOMIES.md`; exercise mappings remain a separate review task.
 - Adding a field that can influence selection requires specification review, deterministic tests, and a contract-version change.
 
 ## Alternatives considered

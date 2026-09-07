@@ -1,12 +1,12 @@
 # Exercise Catalog Specification
 
-Status: minimal V1 internal data contract approved; catalog contents, taxonomies, and selection rules remain subject to separate review.
+Status: minimal V1 internal data contract and taxonomy version `v2` approved; catalog contents and selection rules remain subject to separate review.
 
 ## Purpose and boundary
 
 This contract defines the smallest internal representation needed to ingest a pinned wger snapshot, review exercises, support future deterministic selection, and preserve licensing provenance. It does not approve any exercise, muscle or equipment claim, substitution, scoring factor, or workout rule.
 
-Raw wger responses are untrusted source data. They must be mapped into this contract before storage or domain use. Source and presentation fields never become implicit engine inputs.
+Raw wger responses are untrusted source data. They must be mapped into this contract before storage or domain use. Source and presentation fields never become implicit engine inputs. Controlled IDs and exact field bounds are defined in `EXERCISE_TAXONOMIES.md`; source mappings are defined in `WGER_MAPPING.md`.
 
 ## Snapshot manifest
 
@@ -16,6 +16,7 @@ Every bundled catalog contains one immutable manifest:
 | --- | --- | --- |
 | `schemaVersion` | string | Version of this contract; non-empty and supported by the app |
 | `catalogVersion` | string | Unique immutable version assigned to the reviewed output snapshot |
+| `taxonomyVersion` | string | Exactly `v2` for this contract version |
 | `provider` | enum | Exactly `wger` in V1 |
 | `upstreamBaseUrl` | HTTPS URL | Canonical wger source endpoint |
 | `retrievedAt` | UTC timestamp | Time the source snapshot was retrieved |
@@ -24,7 +25,7 @@ Every bundled catalog contains one immutable manifest:
 | `contentSha256` | lowercase hex string | SHA-256 of the canonicalized entries payload |
 | `importToolVersion` | string | Version of the deterministic importer |
 
-Canonical serialization and hashing rules must be fixed before importer implementation. A manifest or digest mismatch invalidates the entire catalog; the app must not partially load it.
+Entries are sorted by `id`, all set-valued arrays are sorted by their canonical ID, and the entries array is serialized using the JSON Canonicalization Scheme in RFC 8785. `contentSha256` is the lowercase hexadecimal SHA-256 digest of those UTF-8 bytes. A manifest or digest mismatch invalidates the entire catalog; the app must not partially load it.
 
 ## Exercise entry
 
@@ -35,8 +36,12 @@ Every exercise entry contains the following groups.
 | Field | Type | Requirement |
 | --- | --- | --- |
 | `id` | string | Stable Adaptive Workout identifier; unique, non-empty, and never reused |
-| `wgerUuid` | UUID | Required and unique within the catalog |
-| `wgerSourceUrl` | HTTPS URL | Direct human-readable source reference |
+| `wgerBaseId` | positive integer | Upstream base identifier retained for traceability |
+| `wgerBaseUuid` | UUID | Required and unique within the catalog |
+| `wgerTranslationId` | positive integer | Selected English translation identifier |
+| `wgerTranslationUuid` | UUID | Required and unique within the catalog |
+| `wgerApiUrl` | HTTPS URL | Canonical API detail URL for the base record |
+| `wgerPageUrl` | HTTPS URL | Human-readable page for the selected translation |
 | `sourceModifiedAt` | UTC timestamp or null | Upstream modification time when supplied |
 
 The internal `id` is used by workout history. It must not change merely because a display name or upstream numeric identifier changes.
@@ -81,15 +86,14 @@ At most one exercise may claim each non-null benchmark within a catalog version.
 
 | Field | Type | Requirement |
 | --- | --- | --- |
-| `licenseId` | enum | `cc0-1.0`, `cc-by-4.0`, `cc-by-sa-3.0`, or `cc-by-sa-4.0` |
-| `licenseUrl` | HTTPS URL | Must match the allowlisted canonical URL for `licenseId` |
-| `licenseAuthor` | plain-text string or null | Required for attribution licenses; null permitted only when the license allows it |
-| `licenseTitle` | plain-text string or null | Preserved when supplied or required |
-| `attributionSourceUrl` | HTTPS URL | Required source link for attribution output |
+| `baseAttribution` | attribution record | License and authorship for base classification data |
+| `translationAttribution` | attribution record | License and authorship for selected English text |
 | `wasModified` | boolean | True when imported content was changed beyond permitted technical normalization |
 | `modificationNote` | plain-text string or null | Required when `wasModified` is true |
 
-ODbL and any unrecognized, missing, non-commercial, or no-derivatives license are rejected in V1. Images and videos are outside this contract and forbidden in the V1 snapshot. License metadata is displayed but never interpreted as an engine signal.
+Each attribution record contains `licenseId`, `licenseUrl`, `licenseAuthor`, `licenseTitle`, and `attributionSourceUrl` under the same bounds previously defined for those values. Allowed license IDs are `cc0-1.0`, `cc-by-4.0`, `cc-by-sa-3.0`, and `cc-by-sa-4.0`; the URL must match the allowlisted canonical URL. Author is required for attribution licenses and may be null only when the license permits it. Title is preserved when supplied or required. The source URL is required.
+
+ODbL and any unrecognized, missing, non-commercial, or no-derivatives license are rejected in V1. Both base and translation licenses must be independently allowed. Images and videos are outside this contract and forbidden in the V1 snapshot. License metadata is displayed but never interpreted as an engine signal.
 
 ### Review and availability
 
@@ -111,12 +115,12 @@ An entry is selectable if and only if `availability` is `enabled` and all five r
 
 - Required text is trimmed, length-bounded, valid Unicode, and free of HTML and control characters.
 - IDs, URLs, enums, timestamps, hashes, units, and cross-references use strict allowlists and canonical forms.
-- Duplicate internal IDs, duplicate wger UUIDs, duplicate benchmark claims, dangling references, contradictory review records, and license inconsistencies invalidate the affected entry.
+- Duplicate internal IDs, duplicate base or translation IDs or UUIDs, duplicate benchmark claims, dangling references, contradictory review records, and license inconsistencies invalidate the affected entry.
 - An enabled invalid entry fails snapshot creation. A disabled invalid entry is omitted with an auditable import error; omission cannot change another entry's identity.
 - Runtime manifest, schema, or integrity failure invalidates the complete catalog and produces an explicit unavailable or no-recommendation state.
 - Import and validation output is deterministic for identical source bytes, importer version, taxonomy versions, and review inputs.
 
-Exact length limits, canonical JSON rules, taxonomy contents, equipment identifiers, and unit representation must be approved before importer code is written.
+The approved V1 length limits, controlled IDs, and canonical JSON rules are defined in `EXERCISE_TAXONOMIES.md`. Unit representation remains a separate contract required before workout-prescription or logging code, but is not required for the catalog importer because the minimal catalog contains no load value.
 
 ## Explicitly excluded from the minimal contract
 

@@ -128,7 +128,7 @@ Both initial testers report no current condition or limitation affecting trainin
 - Supported population and explicit exclusions
 - Operational definitions and conflict-resolution rules for strength, aesthetics, and flexibility goals, using the approved priority order
 - Five-day schedule composition, session-time estimation, and missed-or-incomplete-session behavior
-- Exact catalog equipment identifiers, machine capabilities, loading increments, and unavailable-equipment behavior
+- Exercise-to-taxonomy mappings, facility-specific machine capabilities, loading increments, and unavailable-equipment behavior
 
 Every rule should include:
 

@@ -137,7 +137,7 @@ Import does not make an exercise eligible for recommendations. Each record must 
 1. Exact experience range and health exclusions for later testers. Both initial testers report no current training limitation, but the long-term ambition of supporting beginners through advanced trainees remains unapproved.
 2. The priority of the approved strength, aesthetics, and flexibility outcomes is strength, then aesthetics, then flexibility.
 3. Behavior for shortened sessions, repeated missed days, schedule changes, and partially completed workouts. A single missed workout is approved to move to the next available training day while preserving workout order.
-4. Exact equipment identifiers and loading increments represented by the approved V1 catalog. The initial full-service-commercial-gym profile enables all of them.
+4. Verification of the initial gym's supported equipment capabilities and loading increments against the approved V1 equipment taxonomy. A full-service-gym assumption cannot replace this verification.
 5. Exact Apple Health metrics and approved readiness rules required before the Reddit TestFlight beta. The initial two-person build uses workout history alone.
 6. Exact explanation format and level of detail. A short reason with optional expanded factors is a candidate pattern, not an approved design.
 7. Free-versus-paid boundaries, deferred until the final pre-rollout phase.

@@ -89,7 +89,7 @@ The catalog repository loads a reviewed, version-pinned wger exercise-data snaps
 
 The domain consumes only validated internal catalog entities, never raw upstream records. Ingestion treats all upstream text and metadata as untrusted, converts permitted content to the approved plain-text and enum representation, rejects malformed or unsupported values, and produces a reproducible snapshot manifest and integrity digest. Instructions and any future media are presentation content and must not become hidden sources of domain behavior.
 
-The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`. Source DTOs, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
+The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`, its controlled IDs and bounds are defined in `EXERCISE_TAXONOMIES.md`, and the upstream mapping boundary is defined in `WGER_MAPPING.md`. Source DTOs, mapping-review records, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
 
 ## Deferred decisions
 
@@ -100,6 +100,7 @@ The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALO
 - Analytics and crash-reporting policy
 - Subscription entitlement behavior
 - Exact exercise-catalog import and update tooling
+- Exercise-to-taxonomy mappings and review evidence
 - Initial exercise-scoring factors and deterministic tie-breakers
 
 Each material decision should be recorded in `docs/decisions/` before implementation.
