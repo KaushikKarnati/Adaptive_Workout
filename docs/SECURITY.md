@@ -16,6 +16,13 @@ The proposed V1 stores workout and profile information locally and does not requ
 - Provide understandable local-data export and deletion controls.
 - Pin and audit dependencies through normal Flutter tooling and CI.
 - Document every added network endpoint and transmitted field.
+- Record the provenance, license, version, and integrity information for imported exercise-catalog content.
+- Reject malformed catalog records and unsupported enum or unit values before they reach the domain engine.
+- Treat pain, limitation, readiness, and workout-history data as sensitive health-adjacent information.
+- Do not send sensitive profile or workout data to a remote recommendation service in V1.
+- Request access only to approved health-data types at the point the related feature is enabled; denial or partial access must not block unrelated core functionality.
+- Keep platform health data local unless a separately approved cloud integration documents its account, OAuth, retention, deletion, and transmitted-field behavior.
+- Keep private-test progress photos outside the application; the two testers may voluntarily share photos with each other, but the app must not request photo-library access or store, import, analyze, or synchronize body images.
 
 ## Release gates
 
@@ -27,3 +34,8 @@ The proposed V1 stores workout and profile information locally and does not requ
 - Database migration and recovery tested
 - iOS and Android permissions reviewed
 - Privacy policy matches actual behavior
+- Exercise content and media licenses permit the shipped commercial use
+
+## Reddit TestFlight gate
+
+Before recruiting TestFlight participants from Reddit, the Apple Health integration must complete permission, data-minimization, denial, partial-data, local-storage, deletion, and recommendation-rule review. The initial two-person build must remain functional without health-data access.
