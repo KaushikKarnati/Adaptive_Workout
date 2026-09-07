@@ -40,7 +40,7 @@ Every exercise considered by the engine requires structured, reviewable metadata
 
 Catalog metadata represents product claims and must be reviewed. A third-party label is not automatically an approved scientific fact.
 
-Wger is the approved upstream seed for the V1 exercise catalog. Only a reviewed, version-pinned offline snapshot is used; live upstream changes cannot alter recommendations. Importing a wger record does not approve its exercise name, description, muscle relationships, equipment relationships, technique, safety, or programming role. Each imported claim remains inactive until it passes the applicable scientific and product review. Wger images and videos are excluded from V1.
+Wger is the approved upstream seed for the V1 exercise catalog. Only a reviewed, version-pinned offline snapshot is used; live upstream changes cannot alter recommendations. Importing a wger record does not approve its exercise name, description, muscle relationships, equipment relationships, technique, safety, or programming role. Each imported claim remains inactive until it passes the applicable scientific and product review. Wger images and videos are excluded from V1. The approved minimal internal data contract and its boundary between provenance, presentation, and engine fields are defined in `EXERCISE_CATALOG.md`.
 
 ## Proposed selection pipeline
 

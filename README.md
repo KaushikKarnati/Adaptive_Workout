@@ -29,4 +29,5 @@ No workout features have been implemented yet. Product and scientific rules must
 1. Read `AGENTS.md`.
 2. Follow `docs/STEP_01_MAC_SETUP.md` on the development Mac.
 3. Complete and approve `docs/PRODUCT.md` before implementing domain logic.
-4. Record significant architectural decisions in `docs/decisions/`.
+4. Read `docs/EXERCISE_CATALOG.md` before changing catalog ingestion or exercise entities.
+5. Record significant architectural decisions in `docs/decisions/`.

@@ -73,6 +73,9 @@ For exercise selection, tests must also cover:
 - Imported HTML, active content, malformed URLs, unknown enums, invalid relationships, duplicate identifiers, and unsupported values are rejected or converted only through an explicitly tested allowlist
 - Wger images and videos are absent from the V1 bundle, and core workouts require no live wger network access
 - An imported record remains ineligible for recommendation until all required product, scientific, safety, equipment, and licensing reviews pass
+- Catalog contract tests cover every required field, allowed enum, referenced identifier, null-versus-empty rule, length bound, uniqueness constraint, and selectable-state invariant in `EXERCISE_CATALOG.md`
+- Property tests demonstrate that source-only and presentation-only fields cannot change exercise eligibility, ranking inputs, or recommendation output
+- Reordering catalog entries or set-valued identifiers does not change the validated entity set or deterministic recommendation output
 - A missed workout remains the next recommendation and shifts later workouts forward without changing their order
 - Schedule behavior depends on an explicit requested date and history rather than the wall clock
 - The initial two-person build remains functional without HealthKit authorization or health data

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. The minimal internal catalog data contract remains to be approved.
+Accepted. The minimal internal catalog data contract is approved in ADR 0003 and `docs/EXERCISE_CATALOG.md`.
 
 ## Context
 
