@@ -85,7 +85,9 @@ The user interface may request a replacement by submitting a new constraint or s
 
 ## Exercise content boundary
 
-The catalog repository may load bundled or locally persisted data, but the domain consumes only validated catalog entities. Third-party content must retain provenance and license metadata through ingestion. Instructions and media are presentation content and must not become hidden sources of domain behavior.
+The catalog repository loads a reviewed, version-pinned wger exercise-data snapshot bundled for offline use. The application does not call wger while generating or presenting a workout and does not incorporate wger application code. Imported content remains in a separately identifiable data package under each record's applicable license, with attribution and modification history preserved. Images and videos are excluded from V1.
+
+The domain consumes only validated internal catalog entities, never raw upstream records. Ingestion treats all upstream text and metadata as untrusted, converts permitted content to the approved plain-text and enum representation, rejects malformed or unsupported values, and produces a reproducible snapshot manifest and integrity digest. Instructions and any future media are presentation content and must not become hidden sources of domain behavior.
 
 ## Deferred decisions
 
@@ -95,7 +97,7 @@ The catalog repository may load bundled or locally persisted data, but the domai
 - Backup/export format
 - Analytics and crash-reporting policy
 - Subscription entitlement behavior
-- Exercise-catalog source, commercial license, and update process
+- Exact exercise-catalog import and update tooling
 - Initial exercise-scoring factors and deterministic tie-breakers
 
 Each material decision should be recorded in `docs/decisions/` before implementation.

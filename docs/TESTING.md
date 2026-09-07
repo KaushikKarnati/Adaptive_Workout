@@ -67,6 +67,12 @@ For exercise selection, tests must also cover:
 - No feasible candidate returns an explicit constrained or no-recommendation result
 - Recommendation explanations match the rules that actually affected selection
 - Historical recommendations remain interpretable using their recorded rule-set and catalog versions
+- Catalog import is reproducible from the recorded wger snapshot identifier and produces the expected manifest and integrity digest
+- Every imported record retains its wger UUID, source URL, author, exact license and license URL, modification disclosure, and review status
+- Records with missing, unsupported, or inconsistent license metadata are rejected; attribution output covers every shipped wger-derived record
+- Imported HTML, active content, malformed URLs, unknown enums, invalid relationships, duplicate identifiers, and unsupported values are rejected or converted only through an explicitly tested allowlist
+- Wger images and videos are absent from the V1 bundle, and core workouts require no live wger network access
+- An imported record remains ineligible for recommendation until all required product, scientific, safety, equipment, and licensing reviews pass
 - A missed workout remains the next recommendation and shifts later workouts forward without changing their order
 - Schedule behavior depends on an explicit requested date and history rather than the wall clock
 - The initial two-person build remains functional without HealthKit authorization or health data

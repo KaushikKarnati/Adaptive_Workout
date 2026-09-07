@@ -124,6 +124,14 @@ Before recruitment for the Reddit TestFlight beta, the product will add user-aut
 - Injury diagnosis, rehabilitation, or corrective-exercise claims
 - Unlicensed third-party exercise instructions, images, videos, or proprietary programming systems
 
+## V1 exercise-catalog source
+
+The V1 exercise catalog uses a reviewed, version-pinned snapshot of exercise data from wger as its upstream seed. The snapshot is bundled for offline use; workout functionality must not depend on the live wger service. Adaptive Workout does not incorporate wger application code.
+
+Each imported record must retain its wger UUID, source URL, author attribution, exact Creative Commons license and license URL, modification disclosure, review status, and snapshot version. Attribution must remain available from within the app. Wger-derived data and modifications remain separately identifiable and are distributed under the applicable content license. V1 excludes all wger images and videos because media carries separate per-asset licensing and review requirements.
+
+Import does not make an exercise eligible for recommendations. Each record must pass schema validation and explicit product, scientific, safety, equipment, and licensing review first. Legal review remains required before commercial release, including review of ShareAlike distribution obligations.
+
 ## Decisions required from the product owner
 
 1. Exact experience range and health exclusions for later testers. Both initial testers report no current training limitation, but the long-term ambition of supporting beginners through advanced trainees remains unapproved.
@@ -134,7 +142,7 @@ Before recruitment for the Reddit TestFlight beta, the product will add user-aut
 6. Exact explanation format and level of detail. A short reason with optional expanded factors is a candidate pattern, not an approved design.
 7. Free-versus-paid boundaries, deferred until the final pre-rollout phase.
 8. Pain or concerning-symptom wording and escalation instructions require qualified clinical review before outside testing.
-9. Commercial license or original-production plan for the exercise catalog and media.
+9. A future source, ownership, and commercial-license plan for exercise media. Wger media is excluded from V1.
 
 ## Validation phases
 

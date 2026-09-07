@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted as product direction. Scientific selection rules and the exercise-catalog source remain unapproved.
+Accepted as product direction. Scientific selection rules remain unapproved; the V1 exercise-catalog source is approved in ADR 0002.
 
 ## Context
 

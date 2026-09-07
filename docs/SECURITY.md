@@ -18,6 +18,9 @@ The proposed V1 stores workout and profile information locally and does not requ
 - Document every added network endpoint and transmitted field.
 - Record the provenance, license, version, and integrity information for imported exercise-catalog content.
 - Reject malformed catalog records and unsupported enum or unit values before they reach the domain engine.
+- Treat all wger text, HTML, attribution fields, URLs, identifiers, and relationships as untrusted input; accept only the approved plain-text and enum representation and never render imported HTML directly.
+- Bundle only a reviewed, integrity-checked wger snapshot; do not depend on the live wger service for core workout functionality.
+- Exclude wger images and videos from V1 and preserve per-record attribution, license URLs, modification disclosures, and source identifiers for imported exercise data.
 - Treat pain, limitation, readiness, and workout-history data as sensitive health-adjacent information.
 - Do not send sensitive profile or workout data to a remote recommendation service in V1.
 - Request access only to approved health-data types at the point the related feature is enabled; denial or partial access must not block unrelated core functionality.
@@ -35,6 +38,7 @@ The proposed V1 stores workout and profile information locally and does not requ
 - iOS and Android permissions reviewed
 - Privacy policy matches actual behavior
 - Exercise content and media licenses permit the shipped commercial use
+- Bundled wger records match the approved license allowlist, attribution output, snapshot manifest, and integrity digest
 
 ## Reddit TestFlight gate
 
