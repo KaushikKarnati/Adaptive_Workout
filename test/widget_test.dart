@@ -1,4 +1,5 @@
 import 'package:adaptive_workout/main.dart';
+import 'package:adaptive_workout/features/workout/sample_workout_flow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,7 +18,11 @@ void main() {
       find.byKey(const Key('start_workout')),
       200,
     );
-    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -300));
+    await tester.pump();
+    tester
+        .widget<FilledButton>(find.byKey(const Key('start_workout')))
+        .onPressed!();
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('load_plus')));
@@ -32,6 +37,8 @@ void main() {
       find.byKey(const Key('finish_workout')),
       150,
     );
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -150));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('finish_workout')));
     await tester.pumpAndSettle();
     expect(find.text('Workout complete'), findsOneWidget);
@@ -168,8 +175,103 @@ void main() {
       find.byKey(const Key('start_workout')),
       200,
     );
-
-    expect(find.byKey(const Key('start_workout')), findsOneWidget);
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -300));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('start_workout')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('finish_workout')),
+      150,
+    );
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -150));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('finish_workout')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('return_today')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('sample set logging stops at the displayed four sets', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await _openActiveWorkout(tester);
+
+    final logSet = tester
+        .widget<FilledButton>(find.byKey(const Key('log_set')))
+        .onPressed!;
+    for (var set = 0; set < 4; set++) {
+      logSet();
+      await tester.pump();
+    }
+
+    await tester.scrollUntilVisible(find.byKey(const Key('log_set')), 150);
+    expect(find.text('All sample sets logged'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('log_set'))).onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('sample notes survive completion back navigation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await _openActiveWorkout(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('finish_workout')),
+      150,
+    );
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -150));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('finish_workout')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Felt steady');
+    await tester.tap(find.byKey(const Key('flow_back')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('finish_workout')),
+      150,
+    );
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -150));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('finish_workout')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Felt steady'), findsOneWidget);
+  });
+
+  testWidgets('rest timer recomputes from its deadline after iOS resumes', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 9, 7, 12);
+    await tester.pumpWidget(
+      MaterialApp(home: SampleWorkoutFlow(now: () => now)),
+    );
+    await _openActiveWorkout(tester);
+    await tester.tap(find.byKey(const Key('log_set')));
+    await tester.pump();
+    expect(find.text('Rest 01:30'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    now = now.add(const Duration(seconds: 30));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(find.text('Rest 01:00'), findsOneWidget);
+  });
+}
+
+Future<void> _openActiveWorkout(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('get_started')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('preview_workout')));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(find.byKey(const Key('start_workout')), 200);
+  await tester.drag(find.byType(Scrollable).last, const Offset(0, -150));
+  await tester.pump();
+  tester
+      .widget<FilledButton>(find.byKey(const Key('start_workout')))
+      .onPressed!();
+  await tester.pumpAndSettle();
 }

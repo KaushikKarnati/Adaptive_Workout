@@ -14,13 +14,16 @@ const _sampleExercises = <({String name, String target, String detail})>[
 ];
 
 class SampleWorkoutFlow extends StatefulWidget {
-  const SampleWorkoutFlow({super.key});
+  const SampleWorkoutFlow({super.key, this.now = DateTime.now});
+
+  final DateTime Function() now;
 
   @override
   State<SampleWorkoutFlow> createState() => _SampleWorkoutFlowState();
 }
 
-class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
+class _SampleWorkoutFlowState extends State<SampleWorkoutFlow>
+    with WidgetsBindingObserver {
   _FlowScreen _screen = _FlowScreen.welcome;
   int _selectedTab = 0;
   int _load = 165;
@@ -29,12 +32,28 @@ class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
   int _loggedSets = 0;
   int _restSeconds = 90;
   Timer? _restTimer;
+  DateTime? _restDeadline;
   String? _lastSetSummary;
+  late final TextEditingController _notesController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _notesController = TextEditingController();
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _restTimer?.cancel();
+    _notesController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshRestTimer();
   }
 
   void _goTo(_FlowScreen screen) => setState(() {
@@ -58,7 +77,9 @@ class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
   }
 
   void _logSet() {
+    if (_loggedSets >= 4) return;
     _restTimer?.cancel();
+    _restDeadline = widget.now().add(const Duration(seconds: 90));
     setState(() {
       _loggedSets += 1;
       _lastSetSummary = '$_load lb × $_reps @ $_rir RIR';
@@ -66,12 +87,18 @@ class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
     });
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      if (_restSeconds == 0) {
-        timer.cancel();
-      } else {
-        setState(() => _restSeconds -= 1);
-      }
+      _refreshRestTimer();
     });
+  }
+
+  void _refreshRestTimer() {
+    final deadline = _restDeadline;
+    if (deadline == null || !mounted) return;
+    final milliseconds = deadline.difference(widget.now()).inMilliseconds;
+    final remaining = milliseconds <= 0 ? 0 : (milliseconds + 999) ~/ 1000;
+    if (remaining == _restSeconds) return;
+    setState(() => _restSeconds = remaining);
+    if (remaining == 0) _restTimer?.cancel();
   }
 
   void _finishWorkout() {
@@ -89,7 +116,9 @@ class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
       _rir = 2;
       _loggedSets = 0;
       _restSeconds = 90;
+      _restDeadline = null;
       _lastSetSummary = null;
+      _notesController.clear();
     });
   }
 
@@ -124,6 +153,8 @@ class _SampleWorkoutFlowState extends State<SampleWorkoutFlow> {
             _FlowScreen.completion => _CompletionScreen(
               loggedSets: _loggedSets,
               lastSetSummary: _lastSetSummary,
+              notesController: _notesController,
+              onBack: _goBack,
               onDone: _resetSampleSession,
             ),
             _FlowScreen.welcome => const SizedBox.shrink(),
@@ -364,7 +395,7 @@ class _PreviewScreen extends StatelessWidget {
         _TopBar(title: 'Workout preview', onBack: onBack),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
             children: [
               Text('Upper strength', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 6),
@@ -448,7 +479,7 @@ class _ActiveWorkoutScreen extends StatelessWidget {
         _TopBar(title: 'Exercise 1 of 5', onBack: onBack),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
             children: [
               LinearProgressIndicator(
                 value: 0.2,
@@ -456,9 +487,12 @@ class _ActiveWorkoutScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               const SizedBox(height: 26),
-              Text(
-                'Barbell bench press',
-                style: theme.textTheme.headlineMedium,
+              Semantics(
+                header: true,
+                child: Text(
+                  'Barbell bench press',
+                  style: theme.textTheme.headlineMedium,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -531,11 +565,20 @@ class _ActiveWorkoutScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Logged: $lastSetSummary'),
-                              Text(
-                                'Rest $rest',
-                                key: const Key('rest_timer'),
-                                style: theme.textTheme.titleLarge,
+                              Semantics(
+                                liveRegion: true,
+                                label: 'Set logged: $lastSetSummary',
+                                excludeSemantics: true,
+                                child: Text('Logged: $lastSetSummary'),
+                              ),
+                              Semantics(
+                                label: _restAccessibilityLabel(restSeconds),
+                                excludeSemantics: true,
+                                child: Text(
+                                  'Rest $rest',
+                                  key: const Key('rest_timer'),
+                                  style: theme.textTheme.titleLarge,
+                                ),
                               ),
                             ],
                           ),
@@ -547,10 +590,14 @@ class _ActiveWorkoutScreen extends StatelessWidget {
               const SizedBox(height: 18),
               FilledButton.icon(
                 key: const Key('log_set'),
-                onPressed: onLogSet,
+                onPressed: loggedSets < 4 ? onLogSet : null,
                 icon: const Icon(Icons.check),
                 label: Text(
-                  lastSetSummary == null ? 'Log set' : 'Log next set',
+                  loggedSets >= 4
+                      ? 'All sample sets logged'
+                      : lastSetSummary == null
+                      ? 'Log set'
+                      : 'Log next set',
                 ),
               ),
               const SizedBox(height: 10),
@@ -568,108 +615,133 @@ class _ActiveWorkoutScreen extends StatelessWidget {
       ],
     );
   }
+
+  String _restAccessibilityLabel(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    if (minutes == 0) return 'Rest timer, $remainder seconds remaining';
+    return 'Rest timer, $minutes minute${minutes == 1 ? '' : 's'} and '
+        '$remainder seconds remaining';
+  }
 }
 
 class _CompletionScreen extends StatelessWidget {
   const _CompletionScreen({
     required this.loggedSets,
     required this.lastSetSummary,
+    required this.notesController,
+    required this.onBack,
     required this.onDone,
   });
 
   final int loggedSets;
   final String? lastSetSummary;
+  final TextEditingController notesController;
+  final VoidCallback onBack;
   final VoidCallback onDone;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return _PageScroll(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SamplePill(),
-          const SizedBox(height: 60),
-          Container(
-            width: 68,
-            height: 68,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.check_rounded,
-              size: 38,
-              color: theme.colorScheme.onPrimaryContainer,
-            ),
-          ),
-          const SizedBox(height: 22),
-          Text('Workout complete', style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Nice work. This summary uses sample session data.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: _Metric(
-                          icon: Icons.timer_outlined,
-                          value: '48 min',
-                          label: 'Duration',
-                        ),
-                      ),
-                      const _CardDivider(),
-                      Expanded(
-                        child: _Metric(
-                          icon: Icons.check_circle_outline,
-                          value: '$loggedSets',
-                          label: 'Sets logged',
-                        ),
-                      ),
-                    ],
+    return Column(
+      children: [
+        _TopBar(title: 'Workout summary', onBack: onBack),
+        Expanded(
+          child: _PageScroll(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
                   ),
-                  if (lastSetSummary != null) ...[
-                    const Divider(height: 30),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Last set: $lastSetSummary',
-                        key: const Key('completion_last_set'),
-                      ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 38,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Workout complete',
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Nice work. This summary uses sample session data.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: _Metric(
+                                icon: Icons.timer_outlined,
+                                value: '48 min',
+                                label: 'Duration',
+                              ),
+                            ),
+                            const _CardDivider(),
+                            Expanded(
+                              child: _Metric(
+                                icon: Icons.check_circle_outline,
+                                value: '$loggedSets',
+                                label: 'Sets logged',
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (lastSetSummary != null) ...[
+                          const Divider(height: 30),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Last set: $lastSetSummary',
+                              key: const Key('completion_last_set'),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: notesController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Session notes (sample only)',
+                    hintText: 'How did the workout feel?',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  key: const Key('return_today'),
+                  onPressed: onDone,
+                  child: const Text('Return to Today'),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 14),
-          const TextField(
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: 'Session notes (sample only)',
-              hintText: 'How did the workout feel?',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            key: const Key('return_today'),
-            onPressed: onDone,
-            child: const Text('Return to Today'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -741,7 +813,7 @@ class _PageScroll extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
+    padding: const EdgeInsets.fromLTRB(20, 22, 20, 100),
     child: child,
   );
 }
@@ -968,35 +1040,51 @@ class _SetControl extends StatelessWidget {
   final VoidCallback? onPlus;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      SizedBox(
-        width: 58,
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-      ),
-      IconButton.filledTonal(
-        key: minusKey,
-        onPressed: onMinus,
-        tooltip: 'Decrease $label',
-        icon: const Icon(Icons.remove),
-      ),
-      Expanded(
-        child: Semantics(
-          label: '$label $value',
-          liveRegion: true,
-          child: Text(
-            value,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final semanticLabel = label == 'RIR' ? 'repetitions in reserve' : label;
+    final valueControls = Row(
+      children: [
+        IconButton.filledTonal(
+          key: minusKey,
+          onPressed: onMinus,
+          tooltip: 'Decrease $semanticLabel',
+          icon: const Icon(Icons.remove),
+        ),
+        Expanded(
+          child: Semantics(
+            label: '$semanticLabel $value',
+            liveRegion: true,
+            excludeSemantics: true,
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
           ),
         ),
-      ),
-      IconButton.filledTonal(
-        key: plusKey,
-        onPressed: onPlus,
-        tooltip: 'Increase $label',
-        icon: const Icon(Icons.add),
-      ),
-    ],
-  );
+        IconButton.filledTonal(
+          key: plusKey,
+          onPressed: onPlus,
+          tooltip: 'Increase $semanticLabel',
+          icon: const Icon(Icons.add),
+        ),
+      ],
+    );
+    final labelWidget = Text(
+      label,
+      style: const TextStyle(fontWeight: FontWeight.w700),
+    );
+    if (MediaQuery.textScalerOf(context).scale(16) > 24) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [labelWidget, const SizedBox(height: 8), valueControls],
+      );
+    }
+    return Row(
+      children: [
+        SizedBox(width: 58, child: labelWidget),
+        Expanded(child: valueControls),
+      ],
+    );
+  }
 }
