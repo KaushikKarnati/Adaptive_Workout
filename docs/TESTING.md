@@ -66,6 +66,9 @@ For exercise selection, tests must also cover:
 - Pain or concerning-symptom input follows the safety path rather than an ordinary substitution path
 - No feasible candidate returns an explicit constrained or no-recommendation result
 - Recommendation explanations match the rules that actually affected selection
+- Eligibility and safety results remain understandable and operable with VoiceOver, Voice Control, 200-percent Larger Text, Reduce Motion, and Differentiate Without Color enabled
+- Each result uses visible text and programmatic semantics rather than color, motion, sound, or an icon alone, and exposes one clear primary action
+- Any future AI-assisted explanation preserves the deterministic status, reason codes, parameters, and safety action exactly; core filtering remains functional when AI is unavailable
 - Historical recommendations remain interpretable using their recorded rule-set and catalog versions
 - Catalog import is reproducible from the recorded wger snapshot identifier and produces the expected manifest and integrity digest
 - Every imported record retains its wger base and translation IDs and UUIDs, API and page URLs, both attribution records, modification disclosure, and review status
@@ -77,6 +80,8 @@ For exercise selection, tests must also cover:
 - Property tests demonstrate that source-only and presentation-only fields cannot change exercise eligibility, ranking inputs, or recommendation output
 - Reordering catalog entries or set-valued identifiers does not change the validated entity set or deterministic recommendation output
 - Canonicalization tests sort entries and set-valued IDs before applying RFC 8785 and verify the expected lowercase SHA-256 digest from fixed fixtures
+- Eligibility tests recompute the canonical explicit-constraint digest, reject a supplied mismatch before safety evaluation, and prove that each included constraint field affects the digest while excluded presentation and candidate fields do not
+- Eligibility monotonicity tests prove that adding a hard exclusion cannot make an ineligible candidate eligible, and combined-failure tests retain every applicable reason in canonical order
 - Boundary tests cover every maximum in `EXERCISE_TAXONOMIES.md`, including exact-limit acceptance, one-over rejection, entry-count limits, and decompressed-size limits
 - Wger mapping fixtures cover every source muscle, equipment, category, language, and license ID listed in `WGER_MAPPING.md`; an upstream ID/name mismatch fails import instead of silently remapping
 - A missed workout remains the next recommendation and shifts later workouts forward without changing their order

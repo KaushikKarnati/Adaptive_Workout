@@ -56,6 +56,8 @@ This pipeline describes product structure, not approved physiological rules:
 
 The presentation format for those explanations remains deferred. A candidate interface may show a short reason with optional expanded factors, but the underlying codes and parameters must remain factual, stable, and traceable to the rule used.
 
+The structural hard-filter and separate safety-gate contract for step 2 is approved in `EXERCISE_ELIGIBILITY.md`. It deliberately excludes recovery, ranking, substitution, prescription, symptom interpretation, and supported-population rules. Exercise-specific mappings, clinical review, and the separately listed training-science rules remain required before real recommendation behavior.
+
 If required data is missing or no safe feasible exercise exists, the engine must return an explicit constrained or no-recommendation result. It must not guess.
 
 ## Adaptation inputs
@@ -121,7 +123,7 @@ Both initial testers report no current condition or limitation affecting trainin
 - Progression and regression rules
 - Deload triggers
 - Exercise substitution rules
-- Exercise eligibility, ranking, tie-breaking, and continuity rules
+- Exercise-specific eligibility mappings, plus ranking, tie-breaking, and continuity rules
 - Explanation codes for every selection and adaptation outcome
 - Load rounding and equipment increments
 - Safety bounds and impossible-input handling

@@ -89,7 +89,9 @@ The catalog repository loads a reviewed, version-pinned wger exercise-data snaps
 
 The domain consumes only validated internal catalog entities, never raw upstream records. Ingestion treats all upstream text and metadata as untrusted, converts permitted content to the approved plain-text and enum representation, rejects malformed or unsupported values, and produces a reproducible snapshot manifest and integrity digest. Instructions and any future media are presentation content and must not become hidden sources of domain behavior.
 
-The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`, its controlled IDs and bounds are defined in `EXERCISE_TAXONOMIES.md`, and the upstream mapping boundary is defined in `WGER_MAPPING.md`. Source DTOs, mapping-review records, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
+The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`, its controlled IDs and bounds are defined in `EXERCISE_TAXONOMIES.md`, and the upstream mapping boundary is defined in `WGER_MAPPING.md`. The approved structural hard-filter and separate safety-gate boundary is defined in `EXERCISE_ELIGIBILITY.md`; exercise-specific mappings and clinical or training-science behavior remain gated by that document. Source DTOs, mapping-review records, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
+
+The application-facing structural eligibility entry point is `ExerciseEligibilityEvaluator`. It receives the trusted, preconfigured catalog validator from the application composition boundary, revalidates the complete catalog and request envelope, recomputes the canonical constraint digest, invokes the private safety gate, and only then invokes the private eligibility filter. The filter receives an eligibility-only immutable projection, preventing presentation, provenance, muscle, benchmark, and relationship fields from becoming hidden inputs. Lower-level gate and filter types are library-private so callers cannot bypass validation. The implementation is tested with synthetic entries and is not connected to the sample workout UI or real recommendations.
 
 ## Deferred decisions
 
@@ -101,6 +103,7 @@ The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALO
 - Subscription entitlement behavior
 - Exact exercise-catalog import and update tooling
 - Exercise-to-taxonomy mappings and review evidence
+- Exercise-eligibility mappings, clinical review, and verified equipment inputs
 - Initial exercise-scoring factors and deterministic tie-breakers
 
 Each material decision should be recorded in `docs/decisions/` before implementation.

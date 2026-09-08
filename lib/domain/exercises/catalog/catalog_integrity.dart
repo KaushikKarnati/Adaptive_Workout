@@ -5,8 +5,11 @@ import 'exercise_catalog.dart';
 
 List<int> canonicalCatalogEntriesBytes(List<ExerciseCatalogEntry> entries) {
   final sorted = [...entries]..sort((a, b) => a.id.compareTo(b.id));
-  return utf8.encode(_canonicalJson(sorted.map(_entryJson).toList()));
+  return canonicalJsonBytes(sorted.map(_entryJson).toList());
 }
+
+List<int> canonicalJsonBytes(Object? value) =>
+    utf8.encode(_canonicalJson(value));
 
 String sha256Hex(List<int> bytes) {
   final data = Uint8List.fromList(bytes);

@@ -8,6 +8,8 @@ Step 1 foundation plus a sample-only workout interface for iPhone UX testing.
 
 The current Welcome → Today → Preview → Active → Completion flow uses fixed illustrative data and does not save workouts or generate recommendations. Product and scientific rules must be approved before they become application logic.
 
+The approved structural exercise-eligibility and safety gate is implemented with synthetic domain tests, but it is not connected to the sample UI or used to generate real workouts.
+
 ## Planned stack
 
 - Flutter and Dart
@@ -30,4 +32,5 @@ The current Welcome → Today → Preview → Active → Completion flow uses fi
 2. Follow `docs/STEP_01_MAC_SETUP.md` on the development Mac.
 3. Complete and approve `docs/PRODUCT.md` before implementing domain logic.
 4. Read `docs/EXERCISE_CATALOG.md` and `docs/EXERCISE_TAXONOMIES.md` before changing catalog ingestion or exercise entities.
-5. Record significant architectural decisions in `docs/decisions/`.
+5. Read `docs/EXERCISE_ELIGIBILITY.md` before implementing safety or exercise filtering; its structural contract is approved, while exercise mappings and clinical or training-science behavior remain gated.
+6. Record significant architectural decisions in `docs/decisions/`.
