@@ -2,6 +2,8 @@
 
 Status: minimal V1 internal data contract and taxonomy version `v2` approved; catalog contents and selection rules remain subject to separate review.
 
+The first real source-backed slice is catalog version `2026.09.08.1`, documented in `catalog/BENCHMARK_CATALOG_2026_09_08.md`. It contains the three approved benchmark identities, but every record remains disabled until its pending science, safety, equipment, and licensing reviews are completed.
+
 ## Purpose and boundary
 
 This contract defines the smallest internal representation needed to ingest a pinned wger snapshot, review exercises, support future deterministic selection, and preserve licensing provenance. It does not approve any exercise, muscle or equipment claim, substitution, scoring factor, or workout rule.

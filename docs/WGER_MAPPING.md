@@ -19,7 +19,9 @@ Only exercise bases with exactly one selected English translation using language
 | `wgerTranslationUuid` | Selected English translation `uuid` |
 | `wgerApiUrl` | `https://wger.de/api/v2/exerciseinfo/{wgerBaseId}/` |
 | `wgerPageUrl` | `https://wger.de/en/exercise/{wgerTranslationId}/view` |
-| `sourceModifiedAt` | Exercise-base `last_update_global`, or null only when absent in the pinned source |
+| `sourceModifiedAt` | Exercise-base `last_update_global`, or null only when absent in the pinned source; an RFC 3339 offset is converted to UTC and fractional seconds are truncated to the contract's required second precision |
+
+Timestamps must contain a real calendar date, hours 00–23, minutes and seconds 00–59, and an explicit `Z` or numeric offset (hours 00–23 and minutes 00–59). Impossible dates, overflowing clock/offset fields, unsupported leap seconds, and trailing content are rejected with `invalid_last_update_global`, never silently normalized. Absent or null source timestamps remain unknown; no current time is substituted.
 
 Numeric IDs are provenance only. Workout history and internal relationships use the stable internal `id`.
 

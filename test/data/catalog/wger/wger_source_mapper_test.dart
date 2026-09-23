@@ -156,6 +156,84 @@ void main() {
     expect(result.candidate!.equipmentCandidates, isEmpty);
     expect(result.reasonCodes, contains('equipment_review_empty_source'));
   });
+
+  test('normalizes an upstream RFC 3339 offset timestamp to UTC seconds', () {
+    final snapshot = _fixtureObject(fixture);
+    _firstExercise(snapshot)['last_update_global'] =
+        '2026-06-19T18:46:21.803261+02:00';
+
+    final result = mapper.mapPinnedSnapshot(jsonEncode(snapshot)).first;
+
+    expect(result.outcome, WgerImportOutcome.acceptedDisabled);
+    expect(
+      result.candidate!.sourceModifiedAt,
+      DateTime.utc(2026, 6, 19, 16, 46, 21),
+    );
+  });
+
+  final validTimestamps = <String, DateTime>{
+    '2000-02-29T00:00:00Z': DateTime.utc(2000, 2, 29),
+    '2026-01-01T00:00:00+23:59': DateTime.utc(2025, 12, 31, 0, 1),
+    '2024-02-29T23:59:59.999999Z': DateTime.utc(2024, 2, 29, 23, 59, 59),
+    '2026-01-01T00:15:00+01:00': DateTime.utc(2025, 12, 31, 23, 15),
+    '2026-12-31T23:45:00-01:00': DateTime.utc(2027, 1, 1, 0, 45),
+    '2026-06-19T18:46:21+05:30': DateTime.utc(2026, 6, 19, 13, 16, 21),
+    '2026-06-19T18:46:21Z': DateTime.utc(2026, 6, 19, 18, 46, 21),
+  };
+  for (final example in validTimestamps.entries) {
+    test('normalizes valid timestamp ${example.key}', () {
+      final snapshot = _fixtureObject(fixture);
+      _firstExercise(snapshot)['last_update_global'] = example.key;
+      final result = mapper.mapPinnedSnapshot(jsonEncode(snapshot)).first;
+      expect(result.outcome, WgerImportOutcome.acceptedDisabled);
+      expect(result.candidate!.sourceModifiedAt, example.value);
+      expect(result.candidate!.sourceModifiedAt!.isUtc, isTrue);
+    });
+  }
+
+  for (final value in <Object>[
+    '',
+    123,
+    '1900-02-29T12:00:00Z',
+    '2026-02-29T12:00:00Z',
+    '2026-04-31T12:00:00Z',
+    '2026-00-01T12:00:00Z',
+    '2026-13-01T12:00:00Z',
+    '2026-01-00T12:00:00Z',
+    '2026-01-01T24:00:00Z',
+    '2026-01-01T12:60:00Z',
+    '2026-01-01T12:00:60Z',
+    '2026-01-01T12:00:00+24:00',
+    '2026-01-01T12:00:00+01:60',
+    '2026-01-01T12:00:00',
+    '2026-01-01',
+    '2026-01-01T12:00:00Z trailing',
+    '2026-01-01T12:00:00Z\n',
+  ]) {
+    test('rejects malformed or unsupported timestamp $value', () {
+      final snapshot = _fixtureObject(fixture);
+      _firstExercise(snapshot)['last_update_global'] = value;
+      final result = mapper.mapPinnedSnapshot(jsonEncode(snapshot)).first;
+      expect(result.outcome, WgerImportOutcome.rejected);
+      expect(result.candidate, isNull);
+      expect(result.reasonCodes, <String>['invalid_last_update_global']);
+    });
+  }
+
+  for (final explicitNull in <bool>[false, true]) {
+    test('missing timestamp stays unknown (explicit null: $explicitNull)', () {
+      final snapshot = _fixtureObject(fixture);
+      final exercise = _firstExercise(snapshot);
+      if (explicitNull) {
+        exercise['last_update_global'] = null;
+      } else {
+        exercise.remove('last_update_global');
+      }
+      final result = mapper.mapPinnedSnapshot(jsonEncode(snapshot)).first;
+      expect(result.outcome, WgerImportOutcome.acceptedDisabled);
+      expect(result.candidate!.sourceModifiedAt, isNull);
+    });
+  }
 }
 
 Map<String, dynamic> _fixtureObject(String fixture) =>

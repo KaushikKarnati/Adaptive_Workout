@@ -186,6 +186,9 @@ final class WgerSourceMapper {
   static final RegExp _unsafeInstructions = RegExp(
     r'<|>|https?://|[\x00-\x09\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u2069]',
   );
+  static final RegExp _rfc3339Timestamp = RegExp(
+    r'^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$',
+  );
 
   List<WgerImportResult> mapPinnedSnapshot(String sourceBytes) {
     final Object? decoded;
@@ -526,11 +529,41 @@ final class WgerSourceMapper {
 
   DateTime _utcTimestamp(Object? value, String field) {
     if (value is! String) throw _RecordError('invalid_$field');
-    final result = DateTime.tryParse(value);
-    if (result == null || !value.endsWith('Z')) {
+    final match = _rfc3339Timestamp.firstMatch(value);
+    if (match == null || match.end != value.length) {
       throw _RecordError('invalid_$field');
     }
-    return result.toUtc();
+    final year = int.parse(match[1]!);
+    final month = int.parse(match[2]!);
+    final day = int.parse(match[3]!);
+    final hour = int.parse(match[4]!);
+    final minute = int.parse(match[5]!);
+    final second = int.parse(match[6]!);
+    final offsetHour = int.parse(match[7] ?? '0');
+    final offsetMinute = int.parse(match[8] ?? '0');
+    // DateTime.parse normalizes overflow. Reject it before converting zones.
+    final calendarDate = DateTime.utc(year, month, day);
+    if (calendarDate.year != year ||
+        calendarDate.month != month ||
+        calendarDate.day != day ||
+        hour > 23 ||
+        minute > 59 ||
+        second > 59 ||
+        offsetHour > 23 ||
+        offsetMinute > 59) {
+      throw _RecordError('invalid_$field');
+    }
+    final result = DateTime.tryParse(value);
+    if (result == null) throw _RecordError('invalid_$field');
+    final utc = result.toUtc();
+    return DateTime.utc(
+      utc.year,
+      utc.month,
+      utc.day,
+      utc.hour,
+      utc.minute,
+      utc.second,
+    );
   }
 
   List<Object?> _list(Map<String, dynamic> value, String field) {
