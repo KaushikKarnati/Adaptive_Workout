@@ -1,6 +1,9 @@
 # Training Science Specification
 
-Status: draft and intentionally unimplemented; no training rules are approved.
+> Scope update approved September 23, 2026: the product owner is the sole initial tester, using an iPhone 17 Pro. The September 29 target is a private offline build; broader supported-iOS compatibility remains required and must be verified separately. Earlier references below to two testers or an invited friend are superseded for this initial phase. Photo evaluation requiring a second evaluator remains unresolved and cannot be claimed complete. For week one, the owner-supplied program replaces the earlier strength-first plan and the old barbell benchmark goals are deferred. The three-month outcome period and existing safety/review gates are unchanged. See [the implementation tracker](IMPLEMENTATION_WEEK_ONE.md).
+
+
+Status: week-one owner policy P1–P10 is approved in [the versioned rule contract](programs/WEEK_ONE_RULES_PROPOSAL.md). Other scientific rules and unresolved prerequisites remain gated.
 
 This document will define the approved training assumptions used by the deterministic engine. Software agents must not fill gaps with invented physiology.
 
@@ -79,6 +82,8 @@ The private-test safety gate requires zero recommendations that violate an expli
 The initial testers describe their combined goal as a lean and defined physique emphasizing strength, aesthetics, and flexibility. The approved product priority is strength first, aesthetics second, and flexibility third. These terms and their ordering express product intent, not executable scientific rules. Before implementation, each supported outcome requires an operational definition and measurement approach. Scientific specifications must define how the priority is applied when prescriptions conflict without bypassing safety constraints.
 
 The approved strength benchmarks for the initial test are the barbell back squat, flat barbell bench press, and conventional barbell deadlift. Progress will be measured using estimated one-repetition maximum derived from logged working sets rather than requiring true maximum attempts. For each tester, private-test success requires an improvement of at least 5% in each benchmark over three months. This threshold is a product validation criterion, not a guaranteed physiological outcome and not an executable progression rule. Each tester must preserve the same benchmark setup and technique standard across baseline and final comparison windows. Other squat, press, or deadlift variations are separate exercises and do not contribute to these benchmark outcomes.
+
+Catalog version `2026.09.08.1` pins real wger identities for those three benchmarks, as documented in `catalog/BENCHMARK_CATALOG_2026_09_08.md`. This approves neither the proposed exercise classifications nor their use in recommendations; all entries remain disabled pending the required science, safety, equipment, and licensing reviews.
 
 For strength-outcome evaluation, an eligible set uses the RIR-adjusted Epley estimate: `estimated 1RM = load × (1 + (completed repetitions + RIR) / 30)`. A set is eligible only when it is a working set of the exact approved benchmark variation, contains 2 to 10 completed repetitions, records an integer RIR from 0 to 3, and has a completed-repetitions-plus-RIR value from 3 to 10. The total external load must be valid, include the bar when applicable, and be normalized to a single internal unit before calculation. Warm-ups and sets containing assisted, failed, partial-range, pain-affected, or technique-invalid repetitions are ineligible. A set is also ineligible when its load, repetitions, RIR, variation, or validity status is missing.
 

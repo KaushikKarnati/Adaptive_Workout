@@ -7,7 +7,9 @@ void main() {
   testWidgets('completes sample flow and preserves logged values', (
     tester,
   ) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     expect(find.text('Your next workout, made clear.'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('get_started')));
@@ -46,7 +48,9 @@ void main() {
   });
 
   testWidgets('back navigation keeps mock session values', (tester) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await tester.tap(find.byKey(const Key('get_started')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('preview_workout')));
@@ -75,7 +79,9 @@ void main() {
   testWidgets('returning to Today resets the temporary sample session', (
     tester,
   ) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await tester.tap(find.byKey(const Key('get_started')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('preview_workout')));
@@ -123,7 +129,9 @@ void main() {
   testWidgets('secondary navigation shows labeled placeholders', (
     tester,
   ) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await tester.tap(find.byKey(const Key('get_started')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('History'));
@@ -142,7 +150,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await tester.scrollUntilVisible(find.byKey(const Key('get_started')), 100);
     await tester.tap(find.byKey(const Key('get_started')));
     await tester.pumpAndSettle();
@@ -161,7 +171,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await tester.scrollUntilVisible(find.byKey(const Key('get_started')), 150);
     await tester.tap(find.byKey(const Key('get_started')));
     await tester.pumpAndSettle();
@@ -194,7 +206,9 @@ void main() {
   testWidgets('sample set logging stops at the displayed four sets', (
     tester,
   ) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await _openActiveWorkout(tester);
 
     final logSet = tester
@@ -216,7 +230,9 @@ void main() {
   testWidgets('sample notes survive completion back navigation', (
     tester,
   ) async {
-    await tester.pumpWidget(const AdaptiveWorkoutApp());
+    await tester.pumpWidget(
+      const AdaptiveWorkoutApp(home: SampleWorkoutFlow()),
+    );
     await _openActiveWorkout(tester);
     await tester.scrollUntilVisible(
       find.byKey(const Key('finish_workout')),

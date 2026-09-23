@@ -89,14 +89,20 @@ The catalog repository loads a reviewed, version-pinned wger exercise-data snaps
 
 The domain consumes only validated internal catalog entities, never raw upstream records. Ingestion treats all upstream text and metadata as untrusted, converts permitted content to the approved plain-text and enum representation, rejects malformed or unsupported values, and produces a reproducible snapshot manifest and integrity digest. Instructions and any future media are presentation content and must not become hidden sources of domain behavior.
 
+Catalog version `2026.09.08.1` is the first real source-backed slice and contains only the three approved benchmark identities. Its typed projection and pinned mapper fixture are offline and integrity tested. All entries remain disabled, and no application composition code loads the slice, until the pending review gates in `docs/catalog/BENCHMARK_CATALOG_2026_09_08.md` are complete.
+
 The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`, its controlled IDs and bounds are defined in `EXERCISE_TAXONOMIES.md`, and the upstream mapping boundary is defined in `WGER_MAPPING.md`. The approved structural hard-filter and separate safety-gate boundary is defined in `EXERCISE_ELIGIBILITY.md`; exercise-specific mappings and clinical or training-science behavior remain gated by that document. Source DTOs, mapping-review records, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
 
 The application-facing structural eligibility entry point is `ExerciseEligibilityEvaluator`. It receives the trusted, preconfigured catalog validator from the application composition boundary, revalidates the complete catalog and request envelope, recomputes the canonical constraint digest, invokes the private safety gate, and only then invokes the private eligibility filter. The filter receives an eligibility-only immutable projection, preventing presentation, provenance, muscle, benchmark, and relationship fields from becoming hidden inputs. Lower-level gate and filter types are library-private so callers cannot bypass validation. The implementation is tested with synthetic entries and is not connected to the sample workout UI or real recommendations.
 
+## Week-one progression boundary
+
+`LoadProgressionPolicy` implements the approved two-exposure external-load adjustment and bodyweight/assistance hold policy with explicit immutable inputs. It returns a candidate load, reason code, rule version and evidence IDs; it is not a complete workout recommendation. It is not connected to the sample UI. Future application orchestration must map a freshly evaluated safety/eligibility result into its explicit gate and supply verified baseline/equipment and complete history. Missing or blocked gates return no candidate load. See [ADR 0007](decisions/0007-approved-week-one-progression.md) for exact load representation and history requirements.
+
 ## Deferred decisions
 
 - Exact package and feature boundaries
-- Drift schema and migration strategy
+- Real-workout schema migrations beyond the approved practice SQLite schema
 - Riverpod provider structure
 - Backup/export format
 - Analytics and crash-reporting policy
@@ -107,3 +113,20 @@ The application-facing structural eligibility entry point is `ExerciseEligibilit
 - Initial exercise-scoring factors and deterministic tie-breakers
 
 Each material decision should be recorded in `docs/decisions/` before implementation.
+
+## Warm-up target boundary
+
+`WarmupPolicy` calculates approved rehearsal-set targets from a matching verified baseline, explicit current gate and available settings. Missing/infeasible or bodyweight/assisted inputs return setup-required. It does not control live exercise execution. The five-minute walking requirement is applied once by future session composition. See [ADR 0008](decisions/0008-approved-warmup-policy.md).
+
+
+## Durable practice logging
+
+Production composition opens `SqlitePracticeRepository` and injects its pure-Dart `PracticeRepository` interface into `PracticeController`. The screen invokes controller actions and acknowledges success only after the transaction and subsequent read succeed. The controller keeps a pending action for safe retry, blocks duplicate in-flight submissions, and does not log database errors or personal values. Record corrections preserve prior payloads while history reads the current set once. Explicit practice-only records never feed the workout engine. SQLite schema v1, limitations and device test isolation are documented in [ADR 0009](decisions/0009-local-workout-storage.md).
+
+## Approved program preview
+
+`owner_program.dart` is a constant, versioned transcription of the owner-approved prescriptions, with ordered blocks, paired supersets, P1 effort targets, P3 rests and P7 alternative preferences. These template IDs are not catalog identities and do not bypass catalog eligibility, setup verification or baseline checks. `ProgramPage` renders the templates read-only from the practice screen. No real-session database writes, automatic scheduling, load selection or optional finisher execution are enabled by this preview.
+
+## Manual program logging
+
+`ProgramLog` validates actual records and completion separately from constant prescriptions; it explicitly reports `recommendationEligible=false`. `ProgramLogController` owns pending actions and retry identity, and `SqliteProgramLogRepository` owns transactional persistence in a separate database. The program screen offers manual logging and history. Each stored session has a prescription snapshot; reads reject a mismatch with the pinned program version. No catalog entries are enabled and no manual actual automatically becomes a verified baseline. See ADR 0009 for the bounded storage extension.

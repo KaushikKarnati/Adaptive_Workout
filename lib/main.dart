@@ -1,12 +1,14 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
-import 'features/workout/sample_workout_flow.dart';
+import 'features/practice/practice_page.dart';
 
 void main() => runApp(const AdaptiveWorkoutApp());
 
 class AdaptiveWorkoutApp extends StatelessWidget {
-  const AdaptiveWorkoutApp({super.key});
+  const AdaptiveWorkoutApp({super.key, this.home});
+
+  final Widget? home;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -15,7 +17,7 @@ class AdaptiveWorkoutApp extends StatelessWidget {
     themeMode: ThemeMode.system,
     theme: _appTheme(Brightness.light),
     darkTheme: _appTheme(Brightness.dark),
-    home: const SampleWorkoutFlow(),
+    home: home ?? const PracticeBootstrap(),
   );
 
   ThemeData _appTheme(Brightness brightness) {

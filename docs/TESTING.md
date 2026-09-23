@@ -1,5 +1,8 @@
 # Testing Strategy
 
+> Scope update approved September 23, 2026: the product owner is the sole initial tester, using an iPhone 17 Pro. The September 29 target is a private offline build; broader supported-iOS compatibility remains required and must be verified separately. Earlier references below to two testers or an invited friend are superseded for this initial phase. Photo evaluation requiring a second evaluator remains unresolved and cannot be claimed complete. For week one, the owner-supplied program replaces the earlier strength-first plan and the old barbell benchmark goals are deferred. The three-month outcome period and existing safety/review gates are unchanged. See [the implementation tracker](IMPLEMENTATION_WEEK_ONE.md).
+
+
 ## Test layers
 
 - Domain unit tests for every calculation and decision rule
@@ -99,3 +102,25 @@ dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
 ```
+
+
+## Approved week-one progression policy
+
+`test/domain/progression/load_progression_policy_test.dart` covers the approved increase/hold/reduce examples, exact 5%/10% limits, equipment rounding bounds, missing or invalid set evidence, incomplete/corrected sessions, changed baselines, independent left/right results, profile/slot isolation, duplicate history, deterministic input ordering and explicit gate precedence. These synthetic policy tests do not establish that a real catalog or user is cleared, that history is durable, or that the future application integration cannot bypass validation. Those remain separate integration requirements.
+
+
+## Practice storage acceptance
+
+Pure domain/controller and widget tests cover strict input parsing, unknown RIR, retry after write/read failure, duplicate taps, completion failure and 200% text layout. The iPhone integration tests exercise actual SQLite transactions, correction history, profile isolation, uniqueness, unsupported-schema preservation, failed action-receipt rollback and close/reopen recovery. Run both integration files in README order with `--no-uninstall` to verify acknowledged records after the first app process terminates.
+
+This is practice-only storage, not full real-program logging. A process killed while an uncommitted write is in flight, physical power loss, future forward migrations, device backup/file-protection behavior and VoiceOver interactions remain additional acceptance work. Do not represent injected transaction rollback as a completed physical-power-loss test.
+
+### Physical release restart fallback
+
+On September 23 the six native database tests passed, but the separate restart test's debug harness failed at Flutter/DDS/VM-service communication. For an independent check, build `tool/storage_recovery_probe.dart` in release mode with `--dart-define=STORAGE_PROBE_PHASE=seed`, install without uninstalling, and launch. Copy `Documents/practice_recovery_result.json` from the app container and require `phase=seed, passed=true`. Rebuild with phase `verify`, install without uninstalling, terminate the existing process and launch again. Require `phase=verify, passed=true`, three records and a different process ID. Both phases passed on the physical iPhone. The probe writes only its separate fixture database and result file. Always restore the regular `lib/main.dart` release build afterward. This is committed-write restart recovery; abrupt power loss remains unverified.
+
+### Manual program logging
+
+Run `flutter test integration_test/program_log_repository_test.dart -d <physical-device-id> --no-uninstall -v`. Its four native tests cover receipts/stale actions, correction history, profile isolation, transactional rollback, one-draft uniqueness, unsupported schema/prescription preservation, completion and post-completion corrections. Only `program_logging_fixture.sqlite` is removed.
+
+For full process recovery, build `tool/program_storage_probe.dart` in release mode with `--dart-define=PROGRAM_PROBE_PHASE=seed`, install without uninstalling and launch. Copy `Documents/program_probe_result.json` and require seed/pass. Rebuild with phase `verify`, install and terminate/relaunch. Require verify/pass and a different process ID. The probe exercises only `program_release_probe.sqlite`, never production data. Restore `lib/main.dart` afterward. This tests acknowledged-write recovery, not physical power loss during a transaction.
