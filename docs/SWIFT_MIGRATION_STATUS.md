@@ -21,7 +21,7 @@ The maintained app is native Swift/SwiftUI at `native/AdaptiveWorkout.xcodeproj`
 
 ## Local native verification
 
-Final executable source: `37711e3` (later commits update documentation only). A clean archive of that commit contained no Dart source or Flutter manifest. Both clean checks ran with `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, excluding the installed Flutter SDK.
+Final executable source: `37711e3` (later commits update documentation and generated Xcode workspace metadata only). A clean archive of that commit contained no Dart source or Flutter manifest. Both clean checks ran with `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, excluding the installed Flutter SDK.
 
 | Check | Result |
 | --- | --- |
