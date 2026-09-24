@@ -1,0 +1,423 @@
+// !$*UTF8*$!
+{
+"classes" = {
+
+};
+"objectVersion" = "77";
+"archiveVersion" = "1";
+"objects" = {
+"A40000000000000000000001" = {
+"isa" = "XCLocalSwiftPackageReference";
+"relativePath" = "Packages/WorkoutCore";
+};
+"A60000000000000000000003" = {
+"isa" = "PBXBuildFile";
+"productRef" = "A50000000000000000000003";
+};
+"A70000000000000000000001" = {
+"isa" = "PBXContainerItemProxy";
+"containerPortal" = "A10000000000000000000003";
+"remoteGlobalIDString" = "A10000000000000000000001";
+"remoteInfo" = "AdaptiveWorkout";
+"proxyType" = "1";
+};
+"A90000000000000000000003" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A80000000000000000000012" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"GENERATE_INFOPLIST_FILE" = "YES";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native.uitests";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"TEST_TARGET_NAME" = "AdaptiveWorkout";
+"ENABLE_TESTABILITY" = "NO";
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+};
+};
+"A30000000000000000000002" = {
+"isa" = "PBXFileSystemSynchronizedRootGroup";
+"path" = "AdaptiveWorkoutUITests";
+"sourceTree" = "<group>";
+};
+"A60000000000000000000002" = {
+"isa" = "PBXBuildFile";
+"productRef" = "A50000000000000000000002";
+};
+"A90000000000000000000002" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("A60000000000000000000001","A60000000000000000000002","A60000000000000000000003");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A80000000000000000000011" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"GENERATE_INFOPLIST_FILE" = "YES";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native.uitests";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"TEST_TARGET_NAME" = "AdaptiveWorkout";
+"ENABLE_TESTABILITY" = "YES";
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+};
+};
+"A30000000000000000000001" = {
+"isa" = "PBXFileSystemSynchronizedRootGroup";
+"path" = "AdaptiveWorkout";
+"sourceTree" = "<group>";
+};
+"A50000000000000000000003" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutPersistence";
+};
+"A60000000000000000000001" = {
+"isa" = "PBXBuildFile";
+"productRef" = "A50000000000000000000001";
+};
+"A80000000000000000000003" = {
+"isa" = "XCConfigurationList";
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+"buildConfigurations" = ("A80000000000000000000001","A80000000000000000000002");
+};
+"A90000000000000000000001" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A20000000000000000000002" = {
+"path" = "AdaptiveWorkoutUITests.xctest";
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.cfbundle";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"A80000000000000000000023" = {
+"isa" = "XCConfigurationList";
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+"buildConfigurations" = ("A80000000000000000000021","A80000000000000000000022");
+};
+"A50000000000000000000002" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutApplication";
+};
+"A80000000000000000000002" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks");
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"MARKETING_VERSION" = "1.0";
+"ENABLE_TESTABILITY" = "NO";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Adaptive Workout";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"CODE_SIGN_STYLE" = "Automatic";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+"CURRENT_PROJECT_VERSION" = "1";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native";
+"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.healthcare-fitness";
+};
+};
+"A90000000000000000000013" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A10000000000000000000003" = {
+"buildConfigurationList" = "A80000000000000000000023";
+"packageReferences" = ("A40000000000000000000001");
+"targets" = ("A10000000000000000000001","A10000000000000000000002","B10000000000000000000001");
+"developmentRegion" = "en";
+"knownRegions" = ("en","Base");
+"isa" = "PBXProject";
+"compatibilityVersion" = "Xcode 16.0";
+"productRefGroup" = "A30000000000000000000003";
+"projectDirPath" = "";
+"attributes" = {
+"LastUpgradeCheck" = "2700";
+"BuildIndependentTargetsInParallel" = "YES";
+"TargetAttributes" = {
+"A10000000000000000000002" = {
+"TestTargetID" = "A10000000000000000000001";
+"CreatedOnToolsVersion" = "27.0";
+};
+"A10000000000000000000001" = {
+"CreatedOnToolsVersion" = "27.0";
+};
+"B10000000000000000000001" = {
+"CreatedOnToolsVersion" = "27.0";
+"TestTargetID" = "A10000000000000000000001";
+};
+};
+};
+"hasScannedForEncodings" = "0";
+"projectRoot" = "";
+"mainGroup" = "A30000000000000000000004";
+};
+"A20000000000000000000001" = {
+"path" = "AdaptiveWorkout.app";
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.application";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"A80000000000000000000022" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+"CLANG_ENABLE_MODULES" = "YES";
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"SWIFT_VERSION" = "6.0";
+"SDKROOT" = "iphoneos";
+"ENABLE_TESTABILITY" = "NO";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CLANG_ENABLE_OBJC_ARC" = "YES";
+};
+};
+"A50000000000000000000001" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutDomain";
+};
+"A80000000000000000000001" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks");
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"MARKETING_VERSION" = "1.0";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+"ENABLE_TESTABILITY" = "YES";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"INFOPLIST_KEY_UILaunchScreen_Generation" = "YES";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone" = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"INFOPLIST_KEY_CFBundleDisplayName" = "Adaptive Workout";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"CODE_SIGN_STYLE" = "Automatic";
+"INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = "YES";
+"CURRENT_PROJECT_VERSION" = "1";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native";
+"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.healthcare-fitness";
+};
+};
+"A90000000000000000000012" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A10000000000000000000002" = {
+"fileSystemSynchronizedGroups" = ("A30000000000000000000002");
+"productReference" = "A20000000000000000000002";
+"productType" = "com.apple.product-type.bundle.ui-testing";
+"buildConfigurationList" = "A80000000000000000000013";
+"productName" = "AdaptiveWorkoutUITests";
+"isa" = "PBXNativeTarget";
+"buildPhases" = ("A90000000000000000000011","A90000000000000000000012","A90000000000000000000013");
+"dependencies" = ("A70000000000000000000002");
+"name" = "AdaptiveWorkoutUITests";
+"buildRules" = ();
+};
+"A30000000000000000000004" = {
+"isa" = "PBXGroup";
+"sourceTree" = "<group>";
+"children" = ("A30000000000000000000001","A30000000000000000000002","A30000000000000000000003","B30000000000000000000001");
+};
+"A80000000000000000000021" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"ENABLE_USER_SCRIPT_SANDBOXING" = "YES";
+"CLANG_ENABLE_MODULES" = "YES";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"SWIFT_VERSION" = "6.0";
+"SDKROOT" = "iphoneos";
+"ENABLE_TESTABILITY" = "YES";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CLANG_ENABLE_OBJC_ARC" = "YES";
+};
+};
+"A70000000000000000000002" = {
+"isa" = "PBXTargetDependency";
+"target" = "A10000000000000000000001";
+"targetProxy" = "A70000000000000000000001";
+};
+"A80000000000000000000013" = {
+"isa" = "XCConfigurationList";
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+"buildConfigurations" = ("A80000000000000000000011","A80000000000000000000012");
+};
+"A90000000000000000000011" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"A10000000000000000000001" = {
+"fileSystemSynchronizedGroups" = ("A30000000000000000000001");
+"productReference" = "A20000000000000000000001";
+"productType" = "com.apple.product-type.application";
+"buildConfigurationList" = "A80000000000000000000003";
+"packageProductDependencies" = ("A50000000000000000000001","A50000000000000000000002","A50000000000000000000003");
+"productName" = "AdaptiveWorkout";
+"isa" = "PBXNativeTarget";
+"buildPhases" = ("A90000000000000000000001","A90000000000000000000002","A90000000000000000000003");
+"dependencies" = ();
+"name" = "AdaptiveWorkout";
+"buildRules" = ();
+};
+"A30000000000000000000003" = {
+"isa" = "PBXGroup";
+"name" = "Products";
+"children" = ("A20000000000000000000001","A20000000000000000000002","B20000000000000000000001");
+"sourceTree" = "<group>";
+};
+"B20000000000000000000001" = {
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.cfbundle";
+"path" = "AdaptiveWorkoutTests.xctest";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"B30000000000000000000001" = {
+"isa" = "PBXFileSystemSynchronizedRootGroup";
+"path" = "Packages/WorkoutCore/Tests/WorkoutCoreTests";
+"sourceTree" = "<group>";
+};
+"B50000000000000000000001" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutDomain";
+};
+"B60000000000000000000001" = {
+"isa" = "PBXBuildFile";
+"productRef" = "B50000000000000000000001";
+};
+"B50000000000000000000002" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutApplication";
+};
+"B60000000000000000000002" = {
+"isa" = "PBXBuildFile";
+"productRef" = "B50000000000000000000002";
+};
+"B50000000000000000000003" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "A40000000000000000000001";
+"productName" = "WorkoutPersistence";
+};
+"B60000000000000000000003" = {
+"isa" = "PBXBuildFile";
+"productRef" = "B50000000000000000000003";
+};
+"B80000000000000000000001" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"GENERATE_INFOPLIST_FILE" = "YES";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native.tests";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"ENABLE_TESTABILITY" = "YES";
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/AdaptiveWorkout.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AdaptiveWorkout";
+"BUNDLE_LOADER" = "$(TEST_HOST)";
+};
+};
+"B80000000000000000000002" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"GENERATE_INFOPLIST_FILE" = "YES";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"PRODUCT_BUNDLE_IDENTIFIER" = "com.adaptiveworkout.adaptiveWorkout.native.tests";
+"CODE_SIGN_STYLE" = "Automatic";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"ENABLE_TESTABILITY" = "NO";
+"DEVELOPMENT_TEAM" = "P3RW4ZXXPR";
+"PRODUCT_NAME" = "$(TARGET_NAME)";
+"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/AdaptiveWorkout.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AdaptiveWorkout";
+"BUNDLE_LOADER" = "$(TEST_HOST)";
+};
+};
+"B80000000000000000000003" = {
+"isa" = "XCConfigurationList";
+"buildConfigurations" = ("B80000000000000000000001","B80000000000000000000002");
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+};
+"B90000000000000000000001" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"B90000000000000000000002" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("B60000000000000000000001","B60000000000000000000002","B60000000000000000000003");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"B90000000000000000000003" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"B70000000000000000000001" = {
+"isa" = "PBXTargetDependency";
+"target" = "A10000000000000000000001";
+"targetProxy" = "A70000000000000000000001";
+};
+"B10000000000000000000001" = {
+"isa" = "PBXNativeTarget";
+"name" = "AdaptiveWorkoutTests";
+"productName" = "AdaptiveWorkoutTests";
+"productReference" = "B20000000000000000000001";
+"productType" = "com.apple.product-type.bundle.unit-test";
+"buildConfigurationList" = "B80000000000000000000003";
+"buildPhases" = ("B90000000000000000000001","B90000000000000000000002","B90000000000000000000003");
+"buildRules" = ();
+"dependencies" = ("B70000000000000000000001");
+"fileSystemSynchronizedGroups" = ("B30000000000000000000001");
+"packageProductDependencies" = ("B50000000000000000000001","B50000000000000000000002","B50000000000000000000003");
+};
+};
+"rootObject" = "A10000000000000000000003";
+}
