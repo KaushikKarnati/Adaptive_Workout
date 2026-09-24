@@ -1,4 +1,5 @@
 import 'package:adaptive_workout/features/program/program_page.dart';
+import 'package:adaptive_workout/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,26 +19,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('preview supports narrow screens and enlarged text', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
-        ),
-        home: const ProgramPage(),
-      ),
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'preview supports narrow screens and enlarged text in $brightness',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        await tester.pumpWidget(const AdaptiveWorkoutApp(home: ProgramPage()));
+        await tester.scrollUntilVisible(find.text('Monday'), 250);
+        await tester.tap(find.text('Monday'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
     );
-    await tester.scrollUntilVisible(find.text('Monday'), 250);
-    await tester.tap(find.text('Monday'));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-  });
+  }
 }

@@ -1,5 +1,5 @@
 import 'package:adaptive_workout/features/practice/practice_page.dart';
-import 'package:adaptive_workout/main.dart';
+import 'package:adaptive_workout/ui/app_theme.dart';
 import 'package:adaptive_workout/domain/logging/practice_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,7 +33,10 @@ void main() {
   ) async {
     final repo = FakePracticeRepository();
     await tester.pumpWidget(
-      AdaptiveWorkoutApp(home: PracticePage(repository: repo)),
+      MaterialApp(
+        theme: AppTheme.build(Brightness.light),
+        home: PracticePage(repository: repo),
+      ),
     );
     await tester.pumpAndSettle();
     await _tap(tester, 'start_practice');
@@ -52,7 +55,10 @@ void main() {
     expect(find.text('Completed practice'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(
-      AdaptiveWorkoutApp(home: PracticePage(repository: repo)),
+      MaterialApp(
+        theme: AppTheme.build(Brightness.light),
+        home: PracticePage(repository: repo),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.text('Completed practice'), findsOneWidget);
@@ -62,7 +68,10 @@ void main() {
     (tester) async {
       final repo = FakePracticeRepository();
       await tester.pumpWidget(
-        AdaptiveWorkoutApp(home: PracticePage(repository: repo)),
+        MaterialApp(
+          theme: AppTheme.build(Brightness.light),
+          home: PracticePage(repository: repo),
+        ),
       );
       await tester.pumpAndSettle();
       await _tap(tester, 'start_practice');
@@ -95,7 +104,10 @@ void main() {
   testWidgets('invalid numeric entry never writes', (tester) async {
     final repo = FakePracticeRepository();
     await tester.pumpWidget(
-      AdaptiveWorkoutApp(home: PracticePage(repository: repo)),
+      MaterialApp(
+        theme: AppTheme.build(Brightness.light),
+        home: PracticePage(repository: repo),
+      ),
     );
     await tester.pumpAndSettle();
     await _tap(tester, 'start_practice');
@@ -129,7 +141,10 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      AdaptiveWorkoutApp(home: PracticePage(repository: repo)),
+      MaterialApp(
+        theme: AppTheme.build(Brightness.light),
+        home: PracticePage(repository: repo),
+      ),
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -144,6 +159,8 @@ void main() {
           .onPressed,
       isNull,
     );
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Practice row').last);
@@ -155,26 +172,67 @@ void main() {
       isNotNull,
     );
   });
-  testWidgets('practice form supports large text on narrow phone', (
+  for (final brightness in Brightness.values) {
+    testWidgets('practice form supports large text in ${brightness.name}', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repo = FakePracticeRepository();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.build(brightness),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: PracticePage(repository: repo),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _tap(tester, 'start_practice');
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('save_practice_set')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
+  testWidgets('practice back returns through history to its parent route', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
     final repo = FakePracticeRepository();
     await tester.pumpWidget(
       MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => PracticePage(repository: repo),
+                ),
+              ),
+              child: const Text('Open practice'),
+            ),
+          ),
         ),
-        home: PracticePage(repository: repo),
       ),
     );
+    await tester.tap(find.text('Open practice'));
     await tester.pumpAndSettle();
     await _tap(tester, 'start_practice');
-    expect(tester.takeException(), isNull);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Workout practice'), findsOneWidget);
+    expect(find.text('Open practice'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Open practice'), findsOneWidget);
   });
 }

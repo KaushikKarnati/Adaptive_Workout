@@ -5,7 +5,10 @@ import '../../domain/exercises/catalog/exercise_catalog_validator.dart';
 import '../../domain/training/setup_variations.dart';
 import '../../domain/training/training_setup.dart';
 import '../../domain/workout/owner_program.dart';
+import '../../ui/app_components.dart';
+import '../../ui/app_haptics.dart';
 import 'training_setup_controller.dart';
+import '../gyms/gym_profile_page.dart';
 
 class TrainingSetupPage extends StatefulWidget {
   const TrainingSetupPage({super.key, this.repository});
@@ -91,131 +94,212 @@ class _TrainingSetupPageState extends State<TrainingSetupPage> {
                       )
                     : const CircularProgressIndicator(),
               )
-            : ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  const Text(
-                    'Save your preferences and verify equipment gradually at the gym. These records stay on this device.',
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Training days'),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      for (var day = 1; day <= 7; day++)
-                        FilterChip(
-                          label: Text(
-                            [
-                              'Mon',
-                              'Tue',
-                              'Wed',
-                              'Thu',
-                              'Fri',
-                              'Sat',
-                              'Sun',
-                            ][day - 1],
-                          ),
-                          selected: days.contains(day),
-                          onSelected: c!.locked || !c!.loaded
-                              ? null
-                              : (on) => setState(() {
-                                  on ? days.add(day) : days.remove(day);
-                                }),
-                        ),
-                    ],
-                  ),
-                  TextField(
-                    controller: minutes,
-                    enabled: !c!.locked,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Preferred workout minutes',
-                      helperText: 'A time preference, not a hard cutoff.',
+            : AppContent(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+                  children: [
+                    const AppPageHeader(
+                      title: 'Your routine',
+                      subtitle: 'Save your preferences and verify equipment gradually at the gym. These records stay on this device.',
                     ),
-                  ),
-                  ExpansionTile(
-                    title: const Text('Exercises to exclude'),
-                    children: [
-                      for (final entry in setupVariationNames.entries)
-                        CheckboxListTile(
-                          title: Text(entry.value),
-                          value: exclusions.contains(entry.key),
-                          onChanged: c!.locked
-                              ? null
-                              : (on) => setState(() {
-                                  on == true
-                                      ? exclusions.add(entry.key)
-                                      : exclusions.remove(entry.key);
-                                }),
-                        ),
-                    ],
-                  ),
-                  FilledButton(
-                    onPressed: c!.locked || !c!.loaded
-                        ? null
-                        : () async {
-                            if (await c!.savePreferences(
-                                  days.toList(),
-                                  minutes.text,
-                                  exclusions.toList(),
-                                ) &&
-                                context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Preferences saved on this device.',
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const AppSectionHeader(title: 'Training days'),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                for (var day = 1; day <= 7; day++)
+                                  FilterChip(
+                                    label: Text(
+                                      [
+                                        'Mon',
+                                        'Tue',
+                                        'Wed',
+                                        'Thu',
+                                        'Fri',
+                                        'Sat',
+                                        'Sun',
+                                      ][day - 1],
+                                    ),
+                                    selected: days.contains(day),
+                                    onSelected: c!.locked || !c!.loaded
+                                        ? null
+                                        : (on) {
+                                            if (on == days.contains(day)) {
+                                              return;
+                                            }
+                                            setState(() {
+                                              on
+                                                  ? days.add(day)
+                                                  : days.remove(day);
+                                            });
+                                            AppHaptics.of(context).selection();
+                                          },
                                   ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: minutes,
+                              enabled: !c!.locked,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Preferred workout minutes',
+                                helperText:
+                                    'A time preference, not a hard cutoff.',
+                                helperMaxLines: 3,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ExpansionTile(
+                              tilePadding: EdgeInsets.zero,
+                              title: const Text('Exercises to exclude'),
+                              children: [
+                                for (final entry in setupVariationNames.entries)
+                                  CheckboxListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(entry.value),
+                                    value: exclusions.contains(entry.key),
+                                    onChanged: c!.locked
+                                        ? null
+                                        : (on) {
+                                            if (on == null ||
+                                                on ==
+                                                    exclusions.contains(
+                                                      entry.key,
+                                                    )) {
+                                              return;
+                                            }
+                                            setState(() {
+                                              on
+                                                  ? exclusions.add(entry.key)
+                                                  : exclusions.remove(
+                                                      entry.key,
+                                                    );
+                                            });
+                                            AppHaptics.of(context).selection();
+                                          },
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: c!.locked || !c!.loaded
+                                  ? null
+                                  : () async {
+                                      final ok = await c!.savePreferences(
+                                        days.toList(),
+                                        minutes.text,
+                                        exclusions.toList(),
+                                      );
+                                      if (!context.mounted) return;
+                                      if (ok) {
+                                        AppHaptics.of(context).success();
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Preferences saved on this device.',
+                                                ),
+                                              ),
+                                            );
+                                      } else {
+                                        AppHaptics.of(context).error();
+                                      }
+                                    },
+                              child: const Text('Save preferences'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.location_on_outlined),
+                        title: const Text('My gym'),
+                        subtitle: const Text(
+                          'Choose a location and confirm its equipment',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: c!.locked
+                            ? null
+                            : () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const GymProfilePage(),
                                 ),
-                              );
-                            }
-                          },
-                    child: const Text('Save preferences'),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Equipment and starting loads',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  for (final equipment
-                      in c!.saved?.equipment ?? <EquipmentSetup>[])
-                    ListTile(
-                      title: Text(equipment.label),
-                      subtitle: Text(
-                        '${setupVariationNames[equipment.variation]} · ${equipment.confirmed ? 'Settings confirmed by you' : 'Needs confirmation'}',
-                      ),
-                      trailing: const Icon(Icons.edit_outlined),
-                      onTap: c!.locked ? null : () => _edit(equipment),
-                    ),
-                  for (final load
-                      in c!.saved?.startingLoads ?? <StartingLoad>[])
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        '${load.sessionId} · ${setupVariationNames[load.variation]}: ${load.microPounds == null ? 'bodyweight' : '${displayPounds(load.microPounds!)} lb${load.convention == SetupLoadConvention.assistance ? ' assistance' : ''}'} · ${c!.saved!.baselineIsCurrent(load) ? 'confirmed' : 'needs reconfirmation'}',
+                              ),
                       ),
                     ),
-                  OutlinedButton(
-                    onPressed: c!.locked || !c!.loaded ? null : () => _edit(),
-                    child: const Text('Add equipment / starting load'),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Exercise review is still pending. Saving setup does not enable weight recommendations. Capabilities and limitations remain unassessed until explicitly recorded.',
-                  ),
-                  if (c!.error != null)
-                    Text(c!.error!, semanticsLabel: c!.error),
-                  if (c!.canRetry)
-                    TextButton(
-                      onPressed: c!.retry,
-                      child: const Text('Retry save'),
+                    const SizedBox(height: 16),
+                    const AppSectionHeader(
+                      title: 'Equipment and starting loads',
+                      subtitle: 'Add the exact setup you use at the gym.',
                     ),
-                  if (!c!.loaded && !c!.busy)
-                    TextButton(
-                      onPressed: c!.load,
-                      child: const Text('Retry loading'),
+                    for (final equipment
+                        in c!.saved?.equipment ?? <EquipmentSetup>[])
+                      Card(
+                        child: ListTile(
+                          title: Text(equipment.label),
+                          subtitle: Text(
+                            '${setupVariationNames[equipment.variation]} · ${equipment.confirmed ? 'Settings confirmed by you' : 'Needs confirmation'}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: c!.locked ? null : () => _edit(equipment),
+                        ),
+                      ),
+                    for (final load
+                        in c!.saved?.startingLoads ?? <StartingLoad>[])
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text(
+                            '${load.sessionId} · ${setupVariationNames[load.variation]}: ${load.microPounds == null ? 'bodyweight' : '${displayPounds(load.microPounds!)} lb${load.convention == SetupLoadConvention.assistance ? ' assistance' : ''}'} · ${c!.saved!.baselineIsCurrent(load) ? 'confirmed' : 'needs reconfirmation'}',
+                          ),
+                        ),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: c!.locked || !c!.loaded ? null : () => _edit(),
+                      icon: const Icon(Icons.add, size: 20),
+                      label: const Text('Add equipment / starting load'),
                     ),
-                  if (c!.busy) const LinearProgressIndicator(),
-                ],
+                    const SizedBox(height: 20),
+                    const AppNotice(
+                      text: 'Exercise review is still pending. Saving setup does not enable weight recommendations. Capabilities and limitations remain unassessed until explicitly recorded.',
+                    ),
+                    if (c!.error != null) ...[
+                      const SizedBox(height: 16),
+                      Semantics(
+                        liveRegion: true,
+                        child: AppNotice(text: c!.error!, warning: true),
+                      ),
+                    ],
+                    if (c!.canRetry)
+                      TextButton(
+                        onPressed: () async {
+                          final ok = await c!.retry();
+                          if (!context.mounted) return;
+                          if (ok) {
+                            AppHaptics.of(context).success();
+                          } else {
+                            AppHaptics.of(context).error();
+                          }
+                        },
+                        child: const Text('Retry save'),
+                      ),
+                    if (!c!.loaded && !c!.busy)
+                      TextButton(
+                        onPressed: c!.load,
+                        child: const Text('Retry loading'),
+                      ),
+                    if (c!.busy) const LinearProgressIndicator(),
+                  ],
+                ),
               ),
       ),
     ),
@@ -311,10 +395,13 @@ class _MachineDialogState extends State<_MachineDialog> {
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 16,
               children: [
                 DropdownButtonFormField<ProgramSession>(
                   initialValue: session,
                   isExpanded: true,
+                  itemHeight: null,
                   decoration: const InputDecoration(
                     labelText: 'Program session (original label)',
                   ),
@@ -335,26 +422,31 @@ class _MachineDialogState extends State<_MachineDialog> {
                   ],
                   onChanged: c.locked
                       ? null
-                      : (s) => setState(() {
-                          session = s!;
-                          if (editing) {
-                            exercise = s.blocks
-                                .expand((b) => b.exercises)
-                                .firstWhere(
-                                  (e) =>
-                                      setupVariantsFor(e).contains(variation),
-                                );
-                            confirmed = false;
-                            load.clear();
-                          } else {
-                            _chooseExercise(s.blocks.first.exercises.first);
-                          }
-                        }),
+                      : (s) {
+                          if (s == null || s == session) return;
+                          setState(() {
+                            session = s;
+                            if (editing) {
+                              exercise = s.blocks
+                                  .expand((b) => b.exercises)
+                                  .firstWhere(
+                                    (e) =>
+                                        setupVariantsFor(e).contains(variation),
+                                  );
+                              confirmed = false;
+                              load.clear();
+                            } else {
+                              _chooseExercise(s.blocks.first.exercises.first);
+                            }
+                          });
+                          AppHaptics.of(context).selection();
+                        },
                 ),
                 DropdownButtonFormField<ProgramExercise>(
                   key: ValueKey(session.id),
                   initialValue: exercise,
                   isExpanded: true,
+                  itemHeight: null,
                   decoration: const InputDecoration(labelText: 'Exercise slot'),
                   items: [
                     for (final e in session.blocks.expand((b) => b.exercises))
@@ -362,12 +454,17 @@ class _MachineDialogState extends State<_MachineDialog> {
                   ],
                   onChanged: c.locked || editing
                       ? null
-                      : (e) => setState(() => _chooseExercise(e!)),
+                      : (e) {
+                          if (e == null || e == exercise) return;
+                          setState(() => _chooseExercise(e));
+                          AppHaptics.of(context).selection();
+                        },
                 ),
                 DropdownButtonFormField<String>(
                   key: ValueKey('${session.id}/${exercise.id}'),
                   initialValue: variation,
                   isExpanded: true,
+                  itemHeight: null,
                   decoration: const InputDecoration(
                     labelText: 'Exact variation',
                   ),
@@ -380,14 +477,18 @@ class _MachineDialogState extends State<_MachineDialog> {
                   ],
                   onChanged: c.locked || editing
                       ? null
-                      : (v) => setState(() {
-                          variation = v!;
-                          convention = setupConventionsFor(v).first;
-                          work.clear();
-                          rehearsal.clear();
-                          load.clear();
-                          confirmed = false;
-                        }),
+                      : (v) {
+                          if (v == null || v == variation) return;
+                          setState(() {
+                            variation = v;
+                            convention = setupConventionsFor(v).first;
+                            work.clear();
+                            rehearsal.clear();
+                            load.clear();
+                            confirmed = false;
+                          });
+                          AppHaptics.of(context).selection();
+                        },
                 ),
                 TextField(
                   controller: label,
@@ -402,6 +503,7 @@ class _MachineDialogState extends State<_MachineDialog> {
                   key: ValueKey(variation),
                   initialValue: convention,
                   isExpanded: true,
+                  itemHeight: null,
                   decoration: const InputDecoration(
                     labelText: 'How weight is recorded',
                   ),
@@ -414,17 +516,22 @@ class _MachineDialogState extends State<_MachineDialog> {
                   ],
                   onChanged: c.locked || editing
                       ? null
-                      : (v) => setState(() {
-                          convention = v!;
-                          work.clear();
-                          rehearsal.clear();
-                          load.clear();
-                          confirmed = false;
-                        }),
+                      : (v) {
+                          if (v == null || v == convention) return;
+                          setState(() {
+                            convention = v;
+                            work.clear();
+                            rehearsal.clear();
+                            load.clear();
+                            confirmed = false;
+                          });
+                          AppHaptics.of(context).selection();
+                        },
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: equipmentId ?? '',
                   isExpanded: true,
+                  itemHeight: null,
                   decoration: const InputDecoration(
                     labelText: 'Equipment category',
                   ),
@@ -441,10 +548,16 @@ class _MachineDialogState extends State<_MachineDialog> {
                   ],
                   onChanged: c.locked
                       ? null
-                      : (v) => setState(() {
-                          equipmentId = v == '' ? null : v;
-                          confirmed = false;
-                        }),
+                      : (v) {
+                          if (v == null) return;
+                          final nextId = v == '' ? null : v;
+                          if (nextId == equipmentId) return;
+                          setState(() {
+                            equipmentId = nextId;
+                            confirmed = false;
+                          });
+                          AppHaptics.of(context).selection();
+                        },
                 ),
                 if (convention != SetupLoadConvention.bodyweight) ...[
                   TextField(
@@ -461,6 +574,7 @@ class _MachineDialogState extends State<_MachineDialog> {
                     decoration: const InputDecoration(
                       labelText: 'Checked warm-up settings (lb)',
                       helperText: 'May stay blank until checked.',
+                      helperMaxLines: 3,
                     ),
                   ),
                   TextField(
@@ -484,12 +598,20 @@ class _MachineDialogState extends State<_MachineDialog> {
                   value: confirmed,
                   onChanged: c.locked
                       ? null
-                      : (v) => setState(() => confirmed = v!),
+                      : (v) {
+                          if (v == null || v == confirmed) return;
+                          setState(() => confirmed = v);
+                          AppHaptics.of(context).selection();
+                        },
                 ),
-                const Text(
-                  'Leave confirmation off and starting weight blank to save equipment for later verification. This does not clear safety restrictions or approve the exercise catalog.',
+                const AppNotice(
+                  text: 'Leave confirmation off and starting weight blank to save equipment for later verification. This does not clear safety restrictions or approve the exercise catalog.',
                 ),
-                if (c.error != null) Text(c.error!),
+                if (c.error != null)
+                  Semantics(
+                    liveRegion: true,
+                    child: AppNotice(text: c.error!, warning: true),
+                  ),
               ],
             ),
           ),
@@ -502,7 +624,14 @@ class _MachineDialogState extends State<_MachineDialog> {
           if (c.canRetry)
             TextButton(
               onPressed: () async {
-                if (await c.retry() && context.mounted) Navigator.pop(context);
+                final ok = await c.retry();
+                if (!context.mounted) return;
+                if (ok) {
+                  AppHaptics.of(context).success();
+                  Navigator.pop(context);
+                } else {
+                  AppHaptics.of(context).error();
+                }
               },
               child: const Text('Retry save'),
             ),
@@ -525,7 +654,13 @@ class _MachineDialogState extends State<_MachineDialog> {
                       quantity: widget.equipment?.quantity ?? 1,
                       capabilities: widget.equipment?.capabilities ?? [],
                     );
-                    if (ok && context.mounted) Navigator.pop(context);
+                    if (!context.mounted) return;
+                    if (ok) {
+                      AppHaptics.of(context).success();
+                      Navigator.pop(context);
+                    } else {
+                      AppHaptics.of(context).error();
+                    }
                   },
             child: Text(
               confirmed ? 'Save confirmed setup' : 'Save unverified setup',

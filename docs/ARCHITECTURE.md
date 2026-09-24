@@ -6,6 +6,14 @@ Status: initial direction; decisions requiring product or scientific judgment re
 
 Version 1 is an offline-first Flutter application. Core workout generation, logging, history, and progress analysis run locally. No user account or cloud backend is required for the first validated release.
 
+## Presentation and appearance
+
+Shared `AppTheme` colors/type/control styles and `AppContent`/header/notice widgets support the current screens and future additions; see [Interface design](UI_DESIGN.md). Widgets continue to delegate application actions to controllers and do not gain workout-generation rules.
+
+`AppearanceController` maps the local System/Light/Dark preference to Flutter `ThemeMode`. System is the default. The pure `AppearancePreferencesRepository` contract is implemented by `SqliteAppearanceRepository` in the separate schema-1 `appearance.sqlite` store, containing only the appearance preference. App composition loads it before launching the normal UI; selection is applied after a successful save, and failures are surfaced through controller state. Appearance selection does not read or mutate training data, and no new dependency or network service is introduced.
+
+`AppHaptics` supplies optional presentation feedback through an iOS UIKit method channel. It is scoped above navigation, handles device unavailability without blocking user actions, and stores only the enabled flag in native UserDefaults. Widgets emit semantic cues on explicit interaction or acknowledged controller results; domain policies and workout repositories have no haptic dependency. Native playback requires an active app and enabled preference. See the haptic mapping in [Interface design](UI_DESIGN.md).
+
 ## Intended dependency direction
 
 ```text
@@ -121,11 +129,11 @@ Each material decision should be recorded in `docs/decisions/` before implementa
 
 ## Durable practice logging
 
-Production composition opens `SqlitePracticeRepository` and injects its pure-Dart `PracticeRepository` interface into `PracticeController`. The screen invokes controller actions and acknowledges success only after the transaction and subsequent read succeed. The controller keeps a pending action for safe retry, blocks duplicate in-flight submissions, and does not log database errors or personal values. Record corrections preserve prior payloads while history reads the current set once. Explicit practice-only records never feed the workout engine. SQLite schema v1, limitations and device test isolation are documented in [ADR 0009](decisions/0009-local-workout-storage.md).
+When explicitly injected for development/testing, `PracticeBootstrap` opens `SqlitePracticeRepository` and injects its pure-Dart `PracticeRepository` interface into `PracticeController`. The screen invokes controller actions and acknowledges success only after the transaction and subsequent read succeed. The controller keeps a pending action for safe retry, blocks duplicate in-flight submissions, and does not log database errors or personal values. Record corrections preserve prior payloads while history reads the current set once. Explicit practice-only records never feed the workout engine. SQLite schema v1, limitations and device test isolation are documented in [ADR 0009](decisions/0009-local-workout-storage.md).
 
 ## Approved program preview
 
-`owner_program.dart` is a constant, versioned transcription of the owner-approved prescriptions, with ordered blocks, paired supersets, P1 effort targets, P3 rests and P7 alternative preferences. These template IDs are not catalog identities and do not bypass catalog eligibility, setup verification or baseline checks. `ProgramPage` renders the templates read-only from the practice screen. No real-session database writes, automatic scheduling, load selection or optional finisher execution are enabled by this preview.
+`owner_program.dart` is a constant, versioned transcription of the owner-approved prescriptions, with ordered blocks, paired supersets, P1 effort targets, P3 rests and P7 alternative preferences. These template IDs are not catalog identities and do not bypass catalog eligibility, setup verification or baseline checks. `ProgramPage` renders the templates read-only. No real-session database writes, automatic scheduling, load selection or optional finisher execution are enabled by this preview.
 
 ## Manual program logging
 
@@ -195,3 +203,31 @@ retaining retry identity until a validated reload confirms absence. Manual SQLit
 schema 2 removes workout payloads, revisions and associated receipts atomically;
 minimal deletion identifiers prevent stale save retries from resurrecting a log.
 Schema-1 upgrades preserve existing payloads. See [ADR 0017](decisions/0017-delete-manual-workout.md).
+
+## Primary app entry
+
+The normal app entry is `WorkoutHomePage`, with direct access to the manual
+workout log, approved program preview, training setup and appearance preference.
+The program preview also links to logging and setup. Practice screens remain
+available through explicit development/test injection only; their repositories
+and saved data are preserved. Hiding practice does not delete it.
+
+### Manual session timing
+
+The presentation-only `SessionTimerPanel` derives total elapsed time from existing
+saved start/completion timestamps. `RestCountdown` stores an in-memory deadline
+selected explicitly from the displayed prescription block. UI refresh ticks do
+not accumulate time or mutate workout data; resume recomputes from timestamps.
+The countdown is cleared on workout selection changes/completion and page exit.
+Neither timer participates in deterministic training rules. See UI_DESIGN.md
+for background, restart and notification limitations.
+
+## Gym location inventories
+
+Training setup links to local gym profiles with explicit equipment availability,
+per-location corrections and offline selection persistence. The pure gym domain
+is separate from exact training setups and does not authorize recommendations.
+`GymProfileController` validates save acknowledgements; the separate schema-1
+`gym_profiles.sqlite` adapter uses transactional compare-and-save. Homewood has
+location metadata only, with all equipment initially unknown. See
+[Gym profiles](GYM_PROFILES.md) for provenance, boundaries and validation.
