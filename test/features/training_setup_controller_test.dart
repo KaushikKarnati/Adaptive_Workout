@@ -3,6 +3,7 @@ import 'package:adaptive_workout/domain/training/setup_variations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/training_setup_fixture.dart';
+import '../support/setup_intake_fixture.dart';
 
 void main() {
   late MemoryTrainingSetupRepository repo;
@@ -18,6 +19,29 @@ void main() {
     );
   });
   tearDown(() => c.dispose());
+  test('intake retries safely and later preference edits preserve evidence without baselines', () async {
+    await c.load();
+    repo.failNextRead = true;
+    expect(
+      await c.saveIntake(
+        reports: [syntheticReport()],
+        rehearsals: [syntheticRehearsal()],
+      ),
+      isFalse,
+    );
+    expect(c.canRetry, isTrue);
+    expect(await c.retry(), isTrue);
+    expect(repo.actions, hasLength(1));
+    expect(c.saved!.reportedWork, hasLength(1));
+    expect(c.saved!.startingLoads, isEmpty);
+    expect(c.saved!.equipment, isEmpty);
+    expect(await c.savePreferences([2, 4], '50', []), isTrue);
+    expect(c.saved!.reportedWork, hasLength(1));
+    expect(c.saved!.rehearsalConfirmations, hasLength(1));
+    expect(await c.saveIntake(reports: [syntheticReport()]), isFalse);
+    expect(c.saved!.reportedWork, hasLength(1));
+    expect(await c.saveIntake(), isFalse);
+  });
   test('preferences remain unknown until explicitly saved', () async {
     await c.load();
     expect(c.saved, isNull);

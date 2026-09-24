@@ -37,6 +37,8 @@ Supplied skip list: hip thrusts, glute bridges, kickbacks, hip abduction, lunges
 
 ## Wednesday — Shoulders + arms + abs
 
+September 24 amendment: the owner explicitly approved increasing seated shoulder press from **2 to 3 working sets**. Current program `owner-program-v2` uses **3 × 8–12** with the existing rest and effort targets. The table below preserves the original supplied prescription; historical `owner-program-v1` sessions retain two sets. Generated recommendations now use `owner-generated-v3`. This changes the prescription only; reported personal loads are not seeded or promoted to verified baselines.
+
 | Order | Exercise | Sets × reps | Rest |
 | --- | --- | --- | --- |
 | 1 | Seated Shoulder Press — machine OR dumbbells | 2 × 8–12 | Not supplied |

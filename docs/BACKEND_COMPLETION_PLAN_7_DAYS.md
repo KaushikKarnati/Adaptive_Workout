@@ -103,6 +103,8 @@ Implementation update: the backend slice below is implemented and tested under [
 
 ### Day 4 — September 26: complete deterministic session generation
 
+Implementation update: [ADR 0014](decisions/0014-session-composition.md) adds the pure guarded composer, approved alternative selection, progression proposals, full external/bodyweight rehearsal composition, deterministic paired-round execution order and compatible schema-2 snapshots. All five templates have synthetic fixtures. The application service has an atomic capture/save contract, but its production adapter, durable rehearsal/safety inputs and real reviewed catalog bindings remain pending. This is partial Day 4 completion; the reviewed-real-Monday exit criterion has not passed.
+
 - Add a pure Dart session composer and an application service that loads a consistent input snapshot, calls guarded eligibility, applies approved alternatives, calls progression/warm-up, checks feasibility, and saves the result.
 - Preserve exercise order, paired rounds, set/rep prescriptions and rest. Apply five-minute walking once. Keep the optional finisher off.
 - Implement the approved duration contract and bodyweight rehearsal rules only after their decisions are recorded. Return actionable missing-setup, safety-stop or infeasible-session results where necessary.

@@ -9,6 +9,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../test/support/recommendation_fixture.dart';
+import '../test/support/session_composer_fixture.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +56,32 @@ void main() {
     await write(s, 'finish${r.id}');
     return s;
   }
+
+  testWidgets(
+    'schema-two composed sessions persist beside unchanged schema-one history',
+    (_) async {
+      final old = generatedPlan();
+      await repo.saveRecommendation(old, actionId: 'old_plan');
+      final f = ComposerFixture('friday');
+      final r = f.composer.compose(f.input()).snapshot!;
+      await repo.saveRecommendation(r, actionId: 'composed');
+      await repo.saveRecommendation(r, actionId: 'composed');
+      await repo.close();
+      repo = await SqliteRecommendationHistoryRepository.open(path: path);
+      final history = await repo.load('fixture');
+      expect(
+        history.recommendations.singleWhere((p) => p.id == old.id).encode(),
+        old.encode(),
+      );
+      final saved = history.recommendations.singleWhere((p) => p.id == r.id);
+      expect(saved.encode(), r.encode());
+      expect(
+        saved.slots.first.targets.first.rehearsalIdentity!.setupId,
+        'assisted_machine_pull_up',
+      );
+      expect(saved.slots.first.targets.first.minRir, isNull);
+    },
+  );
 
   testWidgets(
     'reopen immutable historical recommendations, isolated profiles, receipts, conflicts',
@@ -307,7 +334,7 @@ void main() {
       await expectLater(repo.load('fixture'), throwsA(isA<LoggingException>()));
       await db.update('occurrences', {'revision': 0});
       await db.update('recommendations', {
-        'payload': jsonEncode({...r.toJson(), 'schema': 2}),
+        'payload': jsonEncode({...r.toJson(), 'schema': 3}),
       });
       await expectLater(repo.load('fixture'), throwsA(isA<LoggingException>()));
       await db.update('recommendations', {'payload': r.encode()});

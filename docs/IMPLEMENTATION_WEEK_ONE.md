@@ -153,3 +153,74 @@ Implemented immutable versioned prescription snapshots, separate generated occur
 Validation: 278 unit/widget tests, seven native SQLite integration tests on the authorized iPhone 17 Pro simulator, formatting (66 files, zero changes), static analysis (no issues), and whitespace review passed. Tests cover two-exposure increase followed by correction-driven hold, interrupted/early-ended evidence, version/setup/baseline comparability, both sides, malformed payloads, isolated profiles, retry/conflict, transactional rollback, stale future rejection, historical reads and unsupported-schema preservation. Synthetic fixture data only; no dependencies changed. Physical-device, full-process interruption, airplane-mode and full adaptive-loop acceptance were not run for this slice.
 
 Remaining: guarded Day 4 composition and consistent current-input acquisition across stores; Day 5 live execution/scheduling and proposal confirmation; real catalog review/verified setup; Day 6 ownership services. The current UI stays unchanged. Backend storage success does not mean the full adaptive workout generator is enabled.
+
+
+## Day 4 backend — deterministic composition infrastructure
+
+Implemented the guarded pure-Dart composer for all five templates, approved alternatives, external and bodyweight rehearsals, once-per-session walking, paired-round ordering, preserved work/rest and separate progression proposals. New schema-2 recommendation payloads preserve exact cross-setup rehearsal identities, absent numeric rehearsal RIR, working/rehearsal ranges, binding references, per-slot reasons and proposed loads; old snapshots retain their encoding. A bounded version/reference validation fix permits the real dotted catalog-version format. All fixture reviews are synthetic and remain outside app assets.
+
+Validation: formatting passed for 72 files with zero changes, static analysis passed, all 301 unit/widget tests passed, and eight native recommendation-history SQLite tests passed on the authorized iPhone 17 Pro / iOS 27 simulator. The native suite verifies schema-1/schema-2 coexistence, retry, history correction/invalidation, transaction rollback and refusal/preservation cases. No physical-device or full live-session acceptance was performed. No dependencies or production UI changed.
+
+**Day 4 remains partial.** The application service defines and tests atomic capture/compare-and-save through a source interface, but a production adapter is not implemented or registered. Setup/history live in separate databases and durable safety/rehearsal inputs are still absent. Real reviewed catalog bindings, that consistency boundary, durable verification and subsequent live execution/confirmation remain pending. Monday has not passed the reviewed-real-catalog end-to-end exit. See [ADR 0014](decisions/0014-session-composition.md).
+
+## September 24 — approved three-set shoulder press
+
+Owner explicitly approved updating shoulder press to three working sets. Current previews and new manual workouts use `owner-program-v2` (3 × 8–12, unchanged rest/RIR); generated recommendations use `owner-generated-v3`. Frozen v1 templates, per-log version dispatch, version-preserving corrections and legacy setup decoding preserve old two-set records. The set-entry dialog validates against its selected historical log. No personal working loads were seeded and no production database was migrated.
+
+Validation: format passed (72 files, zero changes), static analysis passed, all 304 unit/widget tests passed, and five native manual-program SQLite tests passed on the authorized iPhone 17 Pro simulator, including v1/v2 reopen and rejected in-place version changes. Whitespace review passed. No physical-phone install was performed for this change.
+
+## Reported setup and durable rehearsal intake
+
+Added schema-2 setup payloads for append-only working reports and bodyweight rehearsal attestations, retaining old payload compatibility and existing atomic SQLite receipts/audit. Controller intake preserves draft/unknown fields and subsequent preference edits preserve evidence. The composer now consumes complete saved attestations through exact current equipment and catalog bindings, while missing links, stale revisions, ambiguity, unknown feedback and adverse reports remain blocked. Working reports never become baselines or progression history. See ADR 0015.
+
+Consolidated the conversation into a private local draft and readable summary outside source control: 28 reports and four unlinked rehearsal attestations. No owner values were seeded into tests or production app databases. Formatting (76 files), analysis, all 315 unit/widget tests, six native simulator setup-storage tests, and whitespace review passed. No new dependencies. The real catalog, exact setup linking, broader safety persistence, atomic cross-store generation adapter, intake UI and physical acceptance remain pending.
+
+## Day 5 — saved-workout lifecycle backend slice (September 24)
+
+Implemented `SavedWorkoutService`: saved-prescription resumption, set/correction
+and completion/explicit early-finish actions, safe receipt retries, and next-session
+planning derived from committed terminal history. Early finish retains partial
+actuals; missed days and corrections do not consume queue entries. Next-session
+planning requires explicit local end-date conversion. See ADR 0016.
+
+Verification for this slice: formatting passed (79 files, zero changes), static
+analysis passed, and all 323 local tests passed. The isolated
+`integration_test/saved_workout_service_test.dart` passed on the connected physical
+iPhone (iOS 27.0) with `--no-uninstall`, proving SQLite close/reopen recovery,
+terminal receipt retry, retained actuals/audit revisions and one queue advancement.
+An initial fixture assertion expected two audit entries; the repository correctly
+includes the current state as a third entry. The corrected revision-chain assertion
+passed. This is database reopen coverage, not process-kill or power-loss proof.
+
+Full Day 5 remains pending: live execution UI, fresh safety/rehearsal orchestration,
+target confirmation, production generation consistency and the broader adaptation
+acceptance flow. No catalog review gate was cleared and no dependency was added.
+
+### Choose today's workout — September 24 follow-up
+
+Owner approved choosing any of the five lifting templates for today, regardless
+of the original weekday label. The manual log now exposes “Choose today’s workout”
+even when a Monday draft is open. Selecting the same template resumes it; switching
+requires explicit early finish and preserves partial records. Cancel keeps the
+current draft. Thursday does not invent a sixth lifting prescription.
+
+Validation: formatting and static analysis passed; all 327 local tests passed.
+All six native manual-log repository tests passed on the connected iPhone using
+isolated fixtures and `--no-uninstall`, including early finish, retry, another
+chosen day, database reopen and corrections. Widget tests exercise the picker,
+cancellation, same-template resumption and failed saves; enlarged-text set entry
+also passes without hit-test warnings.
+
+### Delete individual manual workouts — September 24 follow-up
+
+Added confirmed deletion from history rows and open workouts (including drafts).
+The repository atomically removes the workout, corrections and associated save
+receipts. Minimal opaque deletion identifiers prevent stale retries from restoring
+the workout. Schema 1 upgrades to schema 2 without rewriting existing records.
+See ADR 0017. Practice and generated recommendation history are outside this slice.
+
+Validation: formatting and analysis passed; all 330 local tests and seven physical
+iPhone manual-store integration tests passed. The isolated native fixtures verify
+migration preservation, stale/action conflicts, rollback of partially attempted
+deletion, receipt/revision removal, reopen/retry, profile isolation and prevention
+of resurrection. No owner workout was deleted during implementation or testing.

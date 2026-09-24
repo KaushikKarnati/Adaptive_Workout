@@ -4,6 +4,8 @@ import '../exercises/catalog/exercise_catalog_validator.dart';
 import '../workout/owner_program.dart';
 import 'setup_variations.dart';
 
+part 'training_setup_intake.dart';
+
 final class SetupException implements Exception {
   const SetupException(this.code);
   final String code;
@@ -234,6 +236,10 @@ final class StartingLoad {
 
 final class TrainingSetup {
   TrainingSetup({
+    this.schemaVersion = 1,
+    List<ReportedWorkingSetup> reportedWork = const [],
+    List<RehearsalConfirmation> rehearsalConfirmations = const [],
+    this.programVersion = ownerProgramVersion,
     required this.profileId,
     required this.revision,
     required this.updatedAt,
@@ -245,7 +251,9 @@ final class TrainingSetup {
     required List<String> excludedVariations,
     required List<EquipmentSetup> equipment,
     required List<StartingLoad> startingLoads,
-  }) : trainingDays = _unique(trainingDays, 7),
+  }) : reportedWork = List.unmodifiable(reportedWork),
+       rehearsalConfirmations = List.unmodifiable(rehearsalConfirmations),
+       trainingDays = _unique(trainingDays, 7),
        supportedCapabilities = _assessment(
          supportedCapabilities,
          ExerciseCatalogValidator.functionalCapabilityIds,
@@ -261,6 +269,39 @@ final class TrainingSetup {
        excludedVariations = _unique(excludedVariations, 25),
        equipment = List.unmodifiable(equipment),
        startingLoads = List.unmodifiable(startingLoads) {
+    requireSetup(
+      schemaVersion == 1 || schemaVersion == 2,
+      'unsupported_setup_version',
+    );
+    requireSetup(
+      schemaVersion == 2 ||
+          (reportedWork.isEmpty && rehearsalConfirmations.isEmpty),
+      'schema_two_required',
+    );
+    requireSetup(
+      reportedWork.length <= 500 &&
+          rehearsalConfirmations.length <= 500 &&
+          reportedWork.map((r) => r.id).toSet().length == reportedWork.length &&
+          rehearsalConfirmations.map((r) => r.id).toSet().length ==
+              rehearsalConfirmations.length,
+      'duplicate_or_excess_records',
+    );
+    for (final at in [
+      ...reportedWork.map((r) => r.recordedAt),
+      ...rehearsalConfirmations.map((r) => r.recordedAt),
+    ]) {
+      requireSetup(!at.isAfter(updatedAt), 'future_intake');
+    }
+    for (final r in rehearsalConfirmations.where((r) => r.setupId != null)) {
+      final e = equipment.where((e) => e.id == r.setupId).firstOrNull;
+      requireSetup(
+        e != null &&
+            e.variation == r.variation &&
+            r.setupRevision! <= e.revision,
+        'invalid_rehearsal_reference',
+      );
+    }
+    requireSetup(supportsOwnerProgram(programVersion), 'unsupported_program');
     validateSetupId(profileId);
     _date(updatedAt);
     requireSetup(revision >= 0 && revision <= 2147483647, 'invalid_revision');
@@ -324,7 +365,10 @@ final class TrainingSetup {
       }
     }
   }
-  final String profileId;
+  final int schemaVersion;
+  final List<ReportedWorkingSetup> reportedWork;
+  final List<RehearsalConfirmation> rehearsalConfirmations;
+  final String profileId, programVersion;
   final int revision;
   final DateTime updatedAt;
   final List<int> trainingDays;
@@ -343,8 +387,16 @@ final class TrainingSetup {
       );
   bool get recommendationEligible => false;
   Map<String, Object?> toJson() => {
-    'schema': 1,
-    'programVersion': ownerProgramVersion,
+    'schema': schemaVersion,
+    if (schemaVersion == 2) ...{
+      'reportedWork': ([
+        ...reportedWork,
+      ]..sort((a, b) => a.id.compareTo(b.id))).map((r) => r.toJson()).toList(),
+      'rehearsalConfirmations': ([
+        ...rehearsalConfirmations,
+      ]..sort((a, b) => a.id.compareTo(b.id))).map((r) => r.toJson()).toList(),
+    },
+    'programVersion': programVersion,
     'unit': 'lb',
     'profileId': profileId,
     'revision': revision,
@@ -372,12 +424,33 @@ final class TrainingSetup {
     try {
       final j = jsonDecode(payload) as Map<String, dynamic>;
       requireSetup(
-        j['schema'] == 1 &&
-            j['programVersion'] == ownerProgramVersion &&
+        (j['schema'] == 1 || j['schema'] == 2) &&
+            j['programVersion'] is String &&
+            supportsOwnerProgram(j['programVersion'] as String) &&
             j['unit'] == 'lb',
         'unsupported_setup_version_or_unit',
       );
       final result = TrainingSetup(
+        schemaVersion: j['schema'] as int,
+        reportedWork: j['schema'] == 2
+            ? (j['reportedWork'] as List)
+                  .map(
+                    (r) => ReportedWorkingSetup.fromJson(
+                      r as Map<String, dynamic>,
+                    ),
+                  )
+                  .toList()
+            : [],
+        rehearsalConfirmations: j['schema'] == 2
+            ? (j['rehearsalConfirmations'] as List)
+                  .map(
+                    (r) => RehearsalConfirmation.fromJson(
+                      r as Map<String, dynamic>,
+                    ),
+                  )
+                  .toList()
+            : [],
+        programVersion: j['programVersion'] as String,
         profileId: j['profileId'] as String,
         revision: j['revision'] as int,
         updatedAt: DateTime.parse(j['updatedAt'] as String),
@@ -426,6 +499,40 @@ void validateSetupTransition(TrainingSetup? old, TrainingSetup next) {
               !next.updatedAt.isBefore(old.updatedAt),
     'invalid_transition',
   );
+  requireSetup(
+    old == null || next.schemaVersion >= old.schemaVersion,
+    'schema_downgrade',
+  );
+  for (final prior in old?.reportedWork ?? <ReportedWorkingSetup>[]) {
+    requireSetup(
+      next.reportedWork.any(
+        (r) => jsonEncode(r.toJson()) == jsonEncode(prior.toJson()),
+      ),
+      'intake_history_changed',
+    );
+  }
+  for (final prior
+      in old?.rehearsalConfirmations ?? <RehearsalConfirmation>[]) {
+    requireSetup(
+      next.rehearsalConfirmations.any(
+        (r) => jsonEncode(r.toJson()) == jsonEncode(prior.toJson()),
+      ),
+      'intake_history_changed',
+    );
+  }
+  for (final r in next.rehearsalConfirmations.where(
+    (r) => !(old?.rehearsalConfirmations.any((p) => p.id == r.id) ?? false),
+  )) {
+    if (r.setupId != null) {
+      final e = next.equipment.singleWhere((e) => e.id == r.setupId);
+      requireSetup(
+        e.confirmed &&
+            r.setupRevision == e.revision &&
+            !r.recordedAt.isBefore(e.confirmedAt!),
+        'stale_rehearsal_confirmation',
+      );
+    }
+  }
   for (final prior in old?.equipment ?? <EquipmentSetup>[]) {
     requireSetup(
       next.equipment.any((e) => e.id == prior.id),

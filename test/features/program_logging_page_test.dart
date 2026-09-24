@@ -1,3 +1,7 @@
+import 'package:adaptive_workout/features/program/program_log_controller.dart';
+
+import '../domain/logging/program_log_test.dart' show entry;
+
 import 'package:adaptive_workout/features/program/program_logging_page.dart';
 import 'package:adaptive_workout/domain/logging/practice_repository.dart';
 import 'package:adaptive_workout/domain/logging/program_log.dart';
@@ -26,6 +30,159 @@ Future<void> _configureIdentity(
 }
 
 void main() {
+  testWidgets(
+    'delete confirmation cancels safely and removes a finished history row',
+    (tester) async {
+      final repo = FakeProgramLogRepository();
+      final c = ProgramLogController(repo);
+      await c.start('monday');
+      await c.record(entry());
+      await c.finish(endEarly: true);
+      final id = c.selected!.id;
+      c.dispose();
+      await tester.pumpWidget(
+        MaterialApp(home: ProgramLoggingPage(repository: repo)),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(Key('delete_workout_$id')),
+        300,
+      );
+      await tester.tap(find.byKey(Key('delete_workout_$id')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('including corrections'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(repo.logs, hasLength(1));
+      await tester.tap(find.byKey(Key('delete_workout_$id')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete workout'));
+      await tester.pumpAndSettle();
+      expect(repo.logs, isEmpty);
+      expect(find.byKey(Key('delete_workout_$id')), findsNothing);
+      expect(find.text('Workout deleted'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(
+        MaterialApp(home: ProgramLoggingPage(repository: repo)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(Key('delete_workout_$id')), findsNothing);
+    },
+  );
+  testWidgets('open draft deletion failure shows retry without success', (
+    tester,
+  ) async {
+    final repo = FakeProgramLogRepository();
+    final c = ProgramLogController(repo);
+    await c.start('monday');
+    c.dispose();
+    await tester.pumpWidget(
+      MaterialApp(home: ProgramLoggingPage(repository: repo)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete_selected_workout')));
+    await tester.pumpAndSettle();
+    repo.failWrite = true;
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete workout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Deletion not confirmed. Retry safely.'), findsOneWidget);
+    expect(find.text('Workout deleted'), findsNothing);
+    expect(repo.logs, hasLength(1));
+    repo.failWrite = false;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(repo.logs, isEmpty);
+    expect(find.text('Workout log'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('choose today starts Friday directly and survives reopening', (
+    tester,
+  ) async {
+    final repo = FakeProgramLogRepository();
+    await tester.pumpWidget(
+      MaterialApp(home: ProgramLoggingPage(repository: repo)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('choose_today_workout')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('choose_today_friday')));
+    await tester.pumpAndSettle();
+    expect(repo.logs.values.single.programId, 'friday');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(
+      MaterialApp(home: ProgramLoggingPage(repository: repo)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Friday'), findsOneWidget);
+    expect(repo.logs, hasLength(1));
+  });
+  testWidgets(
+    'switching requires explicit early finish and preserves saved sets',
+    (tester) async {
+      final repo = FakeProgramLogRepository();
+      final c = ProgramLogController(repo);
+      await c.start('monday');
+      await c.record(entry());
+      c.dispose();
+      await tester.pumpWidget(
+        MaterialApp(home: ProgramLoggingPage(repository: repo)),
+      );
+      await tester.pumpAndSettle();
+      Future<void> chooseFriday() async {
+        await tester.tap(find.byKey(const Key('choose_today_workout')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('choose_today_friday')));
+        await tester.pumpAndSettle();
+      }
+
+      await chooseFriday();
+      await tester.tap(find.text('Keep current workout'));
+      await tester.pumpAndSettle();
+      expect(repo.logs.values.single.completed, isFalse);
+      await chooseFriday();
+      await tester.tap(find.text('Finish early and continue'));
+      await tester.pumpAndSettle();
+      final old = repo.logs.values.singleWhere((l) => l.programId == 'monday');
+      expect(old.endedEarly, isTrue);
+      expect(old.sets.single.reps, 10);
+      expect(
+        repo.logs.values.singleWhere((l) => !l.completed).programId,
+        'friday',
+      );
+      expect(find.text('Friday'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'same day resumes and a failed early finish never starts another day',
+    (tester) async {
+      final repo = FakeProgramLogRepository();
+      final c = ProgramLogController(repo);
+      await c.start('monday');
+      c.dispose();
+      await tester.pumpWidget(
+        MaterialApp(home: ProgramLoggingPage(repository: repo)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('choose_today_workout')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('choose_today_monday')));
+      await tester.pumpAndSettle();
+      expect(repo.logs, hasLength(1));
+      repo.failWrite = true;
+      await tester.tap(find.byKey(const Key('choose_today_workout')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('choose_today_tuesday')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Finish early and continue'));
+      await tester.pumpAndSettle();
+      expect(repo.logs.values.single.completed, isFalse);
+      expect(find.textContaining('Save not confirmed'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'manual workout opens a saved draft and explicit skip survives reopening',
     (tester) async {
@@ -177,10 +334,18 @@ void main() {
       find.byKey(const Key('incline_dumbbell_press_false_1_both')),
       250,
     );
+    await Scrollable.ensureVisible(
+      tester.element(
+        find.byKey(const Key('incline_dumbbell_press_false_1_both')),
+      ),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('incline_dumbbell_press_false_1_both')),
     );
     await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -170,7 +170,7 @@ Future<void> main() async {
         whereArgs: ['a'],
       );
       checks.add('prescription_mismatch_refused');
-      await db.execute('PRAGMA user_version=2');
+      await db.execute('PRAGMA user_version=3');
       await repo.close();
       repo = null;
       await rejected(() async {

@@ -1,5 +1,6 @@
 // Approved prescription templates, not eligible catalog records or generated workouts.
-const ownerProgramVersion = 'owner-program-v1';
+const ownerProgramVersion = 'owner-program-v2';
+const legacyOwnerProgramVersion = 'owner-program-v1';
 
 class ProgramExercise {
   const ProgramExercise(
@@ -38,7 +39,7 @@ class ProgramSession {
   final List<ProgramBlock> blocks;
 }
 
-const ownerProgram = <ProgramSession>[
+const ownerProgramV1 = <ProgramSession>[
   ProgramSession('monday', 'Monday', 'Upper chest + lats', [
     ProgramBlock(120, [
       ProgramExercise(
@@ -168,3 +169,47 @@ const ownerProgram = <ProgramSession>[
     ]),
   ]),
 ];
+
+// Owner-approved change: three shoulder-press sets. Keep v1 frozen for history.
+final List<ProgramSession> ownerProgram = List.unmodifiable([
+  for (final session in ownerProgramV1)
+    if (session.id != 'wednesday')
+      session
+    else
+      ProgramSession(
+        session.id,
+        session.day,
+        session.title,
+        List.unmodifiable([
+          for (final block in session.blocks)
+            ProgramBlock(
+              block.restSeconds,
+              List.unmodifiable([
+                for (final exercise in block.exercises)
+                  if (exercise.id != 'shoulder_press')
+                    exercise
+                  else
+                    ProgramExercise(
+                      exercise.id,
+                      exercise.name,
+                      3,
+                      exercise.minReps,
+                      exercise.maxReps,
+                      eachSide: exercise.eachSide,
+                      alternatives: exercise.alternatives,
+                    ),
+              ]),
+            ),
+        ]),
+      ),
+]);
+
+bool supportsOwnerProgram(String version) =>
+    version == ownerProgramVersion || version == legacyOwnerProgramVersion;
+
+List<ProgramSession> ownerProgramForVersion(String version) =>
+    switch (version) {
+      legacyOwnerProgramVersion => ownerProgramV1,
+      ownerProgramVersion => ownerProgram,
+      _ => throw ArgumentError.value(version, 'version', 'Unsupported program'),
+    };

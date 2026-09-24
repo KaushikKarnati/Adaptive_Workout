@@ -77,6 +77,71 @@ ProgramLog filled(ProgramLog log) {
 
 void main() {
   test(
+    'explicit early finish retains partial records and historical encoding',
+    () {
+      final old = fixture();
+      expect(old.toJson().containsKey('endedEarly'), isFalse);
+      expect(ProgramLog.fromJson(old.toJson()).endedEarly, isFalse);
+      final partial = old.record(entry());
+      expect(
+        () => partial.finish(DateTime.utc(2026, 1, 2)),
+        throwsA(isA<LoggingException>()),
+      );
+      final ended = partial.finish(DateTime.utc(2026, 1, 2), endEarly: true);
+      expect(ended.completed, isTrue);
+      expect(ended.allWorkingSetsRecorded, isFalse);
+      expect(ProgramLog.fromJson(ended.toJson()).endedEarly, isTrue);
+      expect(ended.record(entry(reps: 9)).endedEarly, isTrue);
+      expect(
+        () => ended.record(entry(index: 2)),
+        throwsA(isA<LoggingException>()),
+      );
+      expect(
+        () => old.finish(DateTime.utc(2025), endEarly: true),
+        throwsA(isA<LoggingException>()),
+      );
+      expect(
+        () => ProgramLog.fromJson({...old.toJson(), 'endedEarly': true}),
+        throwsA(isA<LoggingException>()),
+      );
+    },
+  );
+
+  test(
+    'old two-set shoulder sessions round-trip while new sessions use three',
+    () {
+      final legacy = ProgramLog.fromJson({
+        ...fixture(day: 'wednesday').toJson(),
+        'version': 'owner-program-v1',
+      });
+      expect(legacy.plan.blocks.first.exercises.single.sets, 2);
+      final original = legacy.toJson();
+      expect(ProgramLog.fromJson(original).toJson(), original);
+      final actual = entry(
+        slot: 'shoulder_press',
+        variant: 'dumbbell_shoulder_press',
+        index: 3,
+      );
+      expect(() => legacy.record(actual), throwsA(isA<LoggingException>()));
+      final current = fixture(day: 'wednesday').record(actual);
+      expect(current.programVersion, 'owner-program-v2');
+      expect(current.plan.blocks.first.exercises.single.sets, 3);
+      final updatedLegacy = legacy.record(
+        entry(slot: 'shoulder_press', variant: 'dumbbell_shoulder_press'),
+      );
+      expect(updatedLegacy.programVersion, 'owner-program-v1');
+      expect(
+        filled(updatedLegacy).finish(DateTime.utc(2026, 1, 2)).programVersion,
+        'owner-program-v1',
+      );
+      expect(
+        () => ProgramLog.fromJson({...original, 'version': 'unknown'}),
+        throwsA(isA<LoggingException>()),
+      );
+    },
+  );
+
+  test(
     'actuals remain separate, immutable and ineligible for recommendations',
     () {
       final log = fixture().record(entry());

@@ -12,9 +12,10 @@ class ProgramLogController extends ChangeNotifier {
   String? selectedId, error;
   bool busy = false, _disposed = false;
   ProgramLog? _pending;
+  ProgramLog? _pendingDelete;
   String? _action;
   ProgramLog? get pending => _pending;
-  bool get locked => busy || _pending != null;
+  bool get locked => busy || _pending != null || _pendingDelete != null;
   ProgramLog? get selected => logs.where((l) => l.id == selectedId).firstOrNull;
   ProgramLog? get draft => logs.where((l) => !l.completed).firstOrNull;
   String _id() => List.generate(
@@ -83,16 +84,25 @@ class ProgramLogController extends ChangeNotifier {
     }
   }
 
-  Future<bool> finish() async {
+  Future<bool> finish({bool endEarly = false}) async {
     if (locked || selected == null) return false;
     if (selected!.completed) return true;
     try {
-      return await _save(selected!.finish(DateTime.now().toUtc()));
+      return await _save(
+        selected!.finish(DateTime.now().toUtc(), endEarly: endEarly),
+      );
     } catch (_) {
       error = 'Record or explicitly skip each working set before finishing. You can leave this workout saved as a draft.';
       notifyListeners();
       return false;
     }
+  }
+
+  Future<bool> delete(ProgramLog log) async {
+    if (locked || log.profile != profile) return false;
+    _pendingDelete = log;
+    _action = _id();
+    return retry();
   }
 
   Future<bool> _save(ProgramLog log) async {
@@ -103,25 +113,43 @@ class ProgramLogController extends ChangeNotifier {
   }
 
   Future<bool> retry() async {
-    if (busy || _pending == null) return false;
+    if (busy || (_pending == null && _pendingDelete == null)) return false;
     busy = true;
     error = null;
     notifyListeners();
     try {
-      await repository.write(
-        _pending!,
-        expectedRevision: _pending!.revision - 1,
-        actionId: _action!,
-      );
-      logs = await repository.load(profile);
-      selectedId = _pending!.id;
-      _pending = null;
+      if (_pendingDelete != null) {
+        final deleted = _pendingDelete!;
+        await repository.delete(
+          profile,
+          deleted.id,
+          expectedRevision: deleted.revision,
+          actionId: _action!,
+        );
+        logs = await repository.load(profile);
+        if (logs.any((l) => l.id == deleted.id)) {
+          throw StateError('delete_not_confirmed');
+        }
+        if (selectedId == deleted.id) selectedId = null;
+        _pendingDelete = null;
+      } else {
+        await repository.write(
+          _pending!,
+          expectedRevision: _pending!.revision - 1,
+          actionId: _action!,
+        );
+        logs = await repository.load(profile);
+        selectedId = _pending!.id;
+        _pending = null;
+      }
       _action = null;
       busy = false;
       notifyListeners();
       return true;
     } catch (_) {
-      error = 'Save not confirmed. Your entries are kept. Retry safely.';
+      error = _pendingDelete != null
+          ? 'Deletion not confirmed. Retry safely.'
+          : 'Save not confirmed. Your entries are kept. Retry safely.';
       busy = false;
       notifyListeners();
       return false;

@@ -9,11 +9,49 @@ void checkHistory(bool ok, String reason) {
 }
 
 void _id(String value) => validateStorageId(value);
+void _reference(String value) => checkHistory(
+  RegExp(r'^[a-zA-Z0-9_.:/-]{1,128}$').hasMatch(value),
+  'invalid_reference',
+);
 void _number(int value, int max, [int min = 0]) =>
     checkHistory(value >= min && value <= max, 'invalid_number');
 void _utc(DateTime value) => checkHistory(value.isUtc, 'utc_required');
 Map<String, dynamic> _map(dynamic value) =>
     Map<String, dynamic>.from(value as Map);
+
+/// Exact rehearsal identity when it differs from the working slot (schema 2).
+final class RehearsalIdentity {
+  RehearsalIdentity({
+    required this.exerciseId,
+    required this.setupId,
+    required this.setupRevision,
+    required this.convention,
+    required this.verificationReference,
+  }) {
+    for (final v in [exerciseId, setupId, verificationReference]) {
+      _id(v);
+    }
+    _number(setupRevision, 2147483647);
+  }
+  final String exerciseId, setupId, verificationReference;
+  final int setupRevision;
+  final LoadConvention convention;
+  Map<String, Object?> toJson() => {
+    'exerciseId': exerciseId,
+    'setupId': setupId,
+    'setupRevision': setupRevision,
+    'convention': convention.name,
+    'verificationReference': verificationReference,
+  };
+  factory RehearsalIdentity.fromJson(Map<String, dynamic> j) =>
+      RehearsalIdentity(
+        exerciseId: j['exerciseId'] as String,
+        setupId: j['setupId'] as String,
+        setupRevision: j['setupRevision'] as int,
+        convention: LoadConvention.values.byName(j['convention'] as String),
+        verificationReference: j['verificationReference'] as String,
+      );
+}
 
 /// Immutable target: load is null only for bodyweight. Range references describe
 /// verified bodyweight rehearsal range without inventing a numeric resistance.
@@ -29,17 +67,28 @@ final class SetTarget {
     required this.maxRir,
     required this.restSeconds,
     this.rangeReference,
+    this.rehearsalIdentity,
   }) {
     _number(index, 1000, 1);
     _number(minReps, 10000, 1);
     _number(maxReps, 10000, minReps);
-    _number(minRir, 10000);
-    _number(maxRir, 10000, minRir);
+    checkHistory((minRir == null) == (maxRir == null), 'invalid_effort');
+    checkHistory(warmup || minRir != null, 'working_effort_required');
+    if (minRir != null) {
+      _number(minRir!, 10000);
+      _number(maxRir!, 10000, minRir!);
+    }
+    checkHistory(
+      warmup || rehearsalIdentity == null,
+      'working_identity_override',
+    );
     _number(restSeconds, 86400);
     if (load != null) _number(load!, 1000000000000);
     if (rangeReference != null) _id(rangeReference!);
   }
-  final int index, minReps, maxReps, minRir, maxRir, restSeconds;
+  final int index, minReps, maxReps, restSeconds;
+  final int? minRir, maxRir;
+  final RehearsalIdentity? rehearsalIdentity;
   final LoggedSide side;
   final bool warmup;
   final int? load;
@@ -56,6 +105,8 @@ final class SetTarget {
     'maxRir': maxRir,
     'restSeconds': restSeconds,
     'rangeReference': rangeReference,
+    if (rehearsalIdentity != null)
+      'rehearsalIdentity': rehearsalIdentity!.toJson(),
   };
   factory SetTarget.fromJson(Map<String, dynamic> j) => SetTarget(
     index: j['index'] as int,
@@ -64,10 +115,13 @@ final class SetTarget {
     load: j['load'] as int?,
     minReps: j['minReps'] as int,
     maxReps: j['maxReps'] as int,
-    minRir: j['minRir'] as int,
-    maxRir: j['maxRir'] as int,
+    minRir: j['minRir'] as int?,
+    maxRir: j['maxRir'] as int?,
     restSeconds: j['restSeconds'] as int,
     rangeReference: j['rangeReference'] as String?,
+    rehearsalIdentity: j['rehearsalIdentity'] == null
+        ? null
+        : RehearsalIdentity.fromJson(_map(j['rehearsalIdentity'])),
   );
 }
 
@@ -98,19 +152,21 @@ final class RecommendedSlot {
     final work = targets.where((t) => !t.warmup).toList();
     checkHistory(work.isNotEmpty, 'working_targets_required');
     for (final t in targets) {
+      final targetConvention = t.rehearsalIdentity?.convention ?? convention;
       checkHistory(
         unilateral ? t.side != LoggedSide.both : t.side == LoggedSide.both,
         'invalid_side',
       );
       checkHistory(
-        convention == LoadConvention.bodyweight
+        targetConvention == LoadConvention.bodyweight
             ? t.load == null
             : t.load != null,
         'invalid_load',
       );
-      if (convention != LoadConvention.bodyweight) {
+      if (targetConvention != LoadConvention.bodyweight) {
         checkHistory(
-          t.load! > 0 || (t.warmup && convention != LoadConvention.assistance),
+          t.load! > 0 ||
+              (t.warmup && targetConvention != LoadConvention.assistance),
           'invalid_load',
         );
       }
@@ -174,6 +230,10 @@ enum RecommendationStatus { ready, blocked }
 
 final class RecommendationSnapshot {
   RecommendationSnapshot({
+    this.schemaVersion = 1,
+    Map<String, String> generationReferences = const {},
+    Map<String, String> slotReasons = const {},
+    Map<String, int> proposedLoads = const {},
     required this.id,
     required this.profile,
     required this.programId,
@@ -194,20 +254,61 @@ final class RecommendationSnapshot {
     required this.walkSeconds,
     required this.preferredMinutes,
     required this.estimatedSeconds,
-  }) : inputRevisions = Map.unmodifiable(inputRevisions),
+  }) : generationReferences = Map.unmodifiable(generationReferences),
+       slotReasons = Map.unmodifiable(slotReasons),
+       proposedLoads = Map.unmodifiable(proposedLoads),
+       inputRevisions = Map.unmodifiable(inputRevisions),
        evidence = Map.unmodifiable(evidence),
        reasons = List.unmodifiable(reasons),
        slots = List.unmodifiable(slots) {
-    for (final value in [
-      id,
-      profile,
-      programId,
-      programVersion,
-      sessionTemplate,
-      ruleVersion,
-      catalogVersion,
-    ]) {
+    checkHistory(
+      schemaVersion == 1 || schemaVersion == 2,
+      'unsupported_snapshot',
+    );
+    checkHistory(
+      generationReferences.length <= 20 &&
+          slotReasons.length <= 100 &&
+          proposedLoads.length <= 100,
+      'too_many_references',
+    );
+    for (final e in [...generationReferences.entries, ...slotReasons.entries]) {
+      _id(e.key);
+      _reference(e.value);
+    }
+    for (final e in proposedLoads.entries) {
+      _id(e.key);
+      _number(e.value, 1000000000000, 1);
+      checkHistory(
+        status == RecommendationStatus.ready &&
+            slots.any(
+              (s) =>
+                  s.id == e.key &&
+                  s.convention != LoadConvention.bodyweight &&
+                  s.convention != LoadConvention.assistance,
+            ),
+        'invalid_proposal',
+      );
+    }
+    checkHistory(
+      schemaVersion == 2 ||
+          (generationReferences.isEmpty &&
+              slotReasons.isEmpty &&
+              proposedLoads.isEmpty),
+      'schema_two_required',
+    );
+    if (schemaVersion == 1) {
+      checkHistory(
+        slots
+            .expand((s) => s.targets)
+            .every((t) => t.minRir != null && t.rehearsalIdentity == null),
+        'schema_two_required',
+      );
+    }
+    for (final value in [id, profile, programId, sessionTemplate]) {
       _id(value);
+    }
+    for (final value in [programVersion, ruleVersion, catalogVersion]) {
+      _reference(value);
     }
     checkHistory(
       RegExp(r'^[a-f0-9]{64}$').hasMatch(catalogDigest),
@@ -271,6 +372,9 @@ final class RecommendationSnapshot {
       'invalid_status_targets',
     );
   }
+  final Map<String, String> generationReferences, slotReasons;
+  final Map<String, int> proposedLoads;
+  final int schemaVersion;
   final String id,
       profile,
       programId,
@@ -288,7 +392,17 @@ final class RecommendationSnapshot {
   final List<String> reasons;
   final List<RecommendedSlot> slots;
   Map<String, Object?> toJson() => {
-    'schema': 1,
+    'schema': schemaVersion,
+    if (schemaVersion == 2) ...{
+      'generationReferences': {
+        for (final k in generationReferences.keys.toList()..sort())
+          k: generationReferences[k],
+      },
+      'slotReasons': {
+        for (final k in slotReasons.keys.toList()..sort()) k: slotReasons[k],
+      },
+      'proposedLoads': _sorted(proposedLoads),
+    },
     'unit': 'lb',
     'id': id,
     'profile': profile,
@@ -313,8 +427,26 @@ final class RecommendationSnapshot {
   };
   String encode() => jsonEncode(toJson());
   factory RecommendationSnapshot.decode(String payload) {
-    final j = _decode(payload);
+    final j = _decode(payload, recommendation: true);
+    if (j['schema'] == 2) {
+      checkHistory(
+        j['generationReferences'] is Map &&
+            j['slotReasons'] is Map &&
+            j['proposedLoads'] is Map,
+        'invalid_generation_metadata',
+      );
+    }
     final r = RecommendationSnapshot(
+      schemaVersion: j['schema'] as int,
+      generationReferences: j['schema'] == 2
+          ? Map<String, String>.from(j['generationReferences'] as Map)
+          : const {},
+      slotReasons: j['schema'] == 2
+          ? Map<String, String>.from(j['slotReasons'] as Map)
+          : const {},
+      proposedLoads: j['schema'] == 2
+          ? Map<String, int>.from(j['proposedLoads'] as Map)
+          : const {},
       id: j['id'] as String,
       profile: j['profile'] as String,
       programId: j['programId'] as String,
@@ -346,10 +478,14 @@ final class RecommendationSnapshot {
 Map<String, int> _sorted(Map<String, int> source) => {
   for (final k in source.keys.toList()..sort()) k: source[k]!,
 };
-Map<String, dynamic> _decode(String payload) {
+Map<String, dynamic> _decode(String payload, {bool recommendation = false}) {
   checkHistory(payload.length <= 2000000, 'payload_too_large');
   final j = _map(jsonDecode(payload));
-  checkHistory(j['schema'] == 1 && j['unit'] == 'lb', 'unsupported_snapshot');
+  checkHistory(
+    (j['schema'] == 1 || (recommendation && j['schema'] == 2)) &&
+        j['unit'] == 'lb',
+    'unsupported_snapshot',
+  );
   return j;
 }
 
@@ -421,15 +557,17 @@ final class GeneratedOccurrence {
       final slots = plan.slots.where((s) => s.id == set.slot);
       checkHistory(slots.length == 1, 'unknown_slot');
       final slot = slots.single;
-      checkHistory(
-        set.variant == slot.exerciseId &&
-            set.setup == slot.setupId &&
-            set.convention == slot.convention,
-        'actual_context_mismatch',
+      final matches = slot.targets.where(
+        (t) => '${slot.id}_${t.key}' == set.key,
       );
+      checkHistory(matches.length == 1, 'unknown_target');
+      final identity = matches.single.rehearsalIdentity;
+      final convention = identity?.convention ?? slot.convention;
       checkHistory(
-        slot.targets.any((t) => '${slot.id}_${t.key}' == set.key),
-        'unknown_target',
+        set.variant == (identity?.exerciseId ?? slot.exerciseId) &&
+            set.setup == (identity?.setupId ?? slot.setupId) &&
+            set.convention == convention,
+        'actual_context_mismatch',
       );
       if (set.skipped) {
         checkHistory(
@@ -441,7 +579,7 @@ final class GeneratedOccurrence {
         );
       } else {
         checkHistory(
-          slot.convention == LoadConvention.bodyweight
+          convention == LoadConvention.bodyweight
               ? set.load == null
               : set.load != null,
           'invalid_load',

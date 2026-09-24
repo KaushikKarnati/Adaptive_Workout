@@ -2,8 +2,34 @@ import 'package:adaptive_workout/domain/workout/owner_program.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('v2 changes only Wednesday shoulder set count and freezes v1', () {
+    final old = ownerProgramForVersion(legacyOwnerProgramVersion);
+    expect(old[2].blocks.first.exercises.single.sets, 2);
+    for (var i = 0; i < old.length; i++) {
+      for (var b = 0; b < old[i].blocks.length; b++) {
+        final before = old[i].blocks[b];
+        final after = ownerProgram[i].blocks[b];
+        expect(after.restSeconds, before.restSeconds);
+        for (var e = 0; e < before.exercises.length; e++) {
+          final a = before.exercises[e], n = after.exercises[e];
+          expect(
+            [n.id, n.name, n.minReps, n.maxReps, n.eachSide, n.alternatives],
+            [a.id, a.name, a.minReps, a.maxReps, a.eachSide, a.alternatives],
+          );
+          expect(n.sets, a.id == 'shoulder_press' ? 3 : a.sets);
+        }
+      }
+    }
+    expect(() => ownerProgram[2].blocks.clear(), throwsUnsupportedError);
+    expect(
+      () => ownerProgram[2].blocks.first.exercises.clear(),
+      throwsUnsupportedError,
+    );
+    expect(() => ownerProgramForVersion('unknown'), throwsArgumentError);
+  });
+
   test('approved program has exactly the five ordered sessions', () {
-    expect(ownerProgramVersion, 'owner-program-v1');
+    expect(ownerProgramVersion, 'owner-program-v2');
     expect(ownerProgram.map((s) => s.id), [
       'monday',
       'tuesday',
@@ -32,7 +58,7 @@ void main() {
         'cable_crunch:3:10:15',
       ],
       [
-        'shoulder_press:2:8:12',
+        'shoulder_press:3:8:12',
         'cable_lateral_raise:3:12:20',
         'reverse_pec_deck:3:12:20',
         'cable_curl:3:8:12',

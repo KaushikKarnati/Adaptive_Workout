@@ -7,6 +7,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../test/support/training_setup_fixture.dart';
+import '../test/support/setup_intake_fixture.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,64 @@ void main() {
     await repo.close();
     await deleteDatabase(path);
   });
+  testWidgets(
+    'schema-two reports and rehearsal drafts survive reopen alongside unchanged v1 audit',
+    (_) async {
+      final old = fixtureProfile();
+      await repo.save(old, expectedRevision: -1, actionId: 'old');
+      final next = withIntake(
+        old,
+        revision: 1,
+        reports: [syntheticReport()],
+        rehearsals: [syntheticRehearsal()],
+      );
+      await repo.save(next, expectedRevision: 0, actionId: 'intake');
+      await repo.save(next, expectedRevision: 0, actionId: 'intake');
+      await repo.close();
+      repo = await SqliteTrainingSetupRepository.open(path: path);
+      final restored = (await repo.load(old.profileId))!;
+      expect(restored.encode(), next.encode());
+      expect(restored.startingLoads, isEmpty);
+      expect(
+        restored.rehearsalConfirmations.single.hasCompleteAttestation,
+        isFalse,
+      );
+      final db = await openDatabase(path);
+      expect((await db.query('revisions')).single['payload'], old.encode());
+      expect((await db.query('receipts')).length, 2);
+      expect(await repo.load('other'), isNull);
+      await expectLater(
+        repo.save(
+          withIntake(old, revision: 2),
+          expectedRevision: 1,
+          actionId: 'delete_reports',
+        ),
+        throwsA(isA<SetupException>()),
+      );
+      expect((await repo.load(old.profileId))!.encode(), next.encode());
+    },
+  );
+  testWidgets(
+    'intake receipt failure rolls back the new payload and prior revision',
+    (_) async {
+      final old = fixtureProfile();
+      await repo.save(old, expectedRevision: -1, actionId: 'old');
+      final db = await openDatabase(path);
+      await db.execute(
+        "CREATE TRIGGER intake_failure BEFORE INSERT ON receipts BEGIN SELECT RAISE(ABORT,'fixture'); END",
+      );
+      final next = withIntake(old, revision: 1, reports: [syntheticReport()]);
+      await expectLater(
+        repo.save(next, expectedRevision: 0, actionId: 'intake'),
+        throwsA(isA<DatabaseException>()),
+      );
+      expect((await repo.load(old.profileId))!.encode(), old.encode());
+      expect(await db.query('revisions'), isEmpty);
+      await db.execute('DROP TRIGGER intake_failure');
+      await repo.save(next, expectedRevision: 0, actionId: 'intake');
+      expect((await repo.load(old.profileId))!.encode(), next.encode());
+    },
+  );
   testWidgets(
     'native setup confirmation, revision history, receipts, isolation and reopen',
     (_) async {

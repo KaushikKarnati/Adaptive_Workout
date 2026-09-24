@@ -9,6 +9,20 @@ import '../../support/training_setup_fixture.dart';
 
 void main() {
   test(
+    'legacy setup payload keeps its program version and canonical bytes',
+    () {
+      final payload = jsonEncode({
+        ...fixtureProfile().toJson(),
+        'programVersion': 'owner-program-v1',
+      });
+      final legacy = TrainingSetup.decode(payload);
+      expect(legacy.programVersion, 'owner-program-v1');
+      expect(legacy.encode(), payload);
+      expect(fixtureProfile().programVersion, 'owner-program-v2');
+    },
+  );
+
+  test(
     'exact pounds parser rejects guessing rounding units and nonfinite values',
     () {
       expect(parsePounds('25.125001'), 25125001);

@@ -69,6 +69,8 @@ class ProgramSet {
 
 class ProgramLog {
   ProgramLog({
+    this.programVersion = ownerProgramVersion,
+    this.endedEarly = false,
     required this.id,
     required this.profile,
     required this.programId,
@@ -77,14 +79,17 @@ class ProgramLog {
     required this.completedAt,
     required List<ProgramSet> sets,
   }) : sets = List.unmodifiable(sets);
-  final String id, profile, programId;
+  final String id, profile, programId, programVersion;
   final DateTime startedAt;
   final DateTime? completedAt;
   final int revision;
+  final bool endedEarly;
   final List<ProgramSet> sets;
   bool get completed => completedAt != null;
   bool get recommendationEligible => false;
-  ProgramSession get plan => ownerProgram.singleWhere((p) => p.id == programId);
+  ProgramSession get plan =>
+      ownerProgramForVersion(programVersion)
+          .singleWhere((p) => p.id == programId);
   List<ProgramExercise> get exercises =>
       plan.blocks.expand((b) => b.exercises).toList();
   bool get allWorkingSetsRecorded {
@@ -189,6 +194,8 @@ class ProgramLog {
       throw const LoggingException('exercise_stopped');
     }
     return ProgramLog(
+      programVersion: programVersion,
+      endedEarly: endedEarly,
       id: id,
       profile: profile,
       programId: programId,
@@ -203,15 +210,17 @@ class ProgramLog {
     );
   }
 
-  ProgramLog finish(DateTime at) {
+  ProgramLog finish(DateTime at, {bool endEarly = false}) {
     if (completed) return this;
     if (!startedAt.isUtc || !at.isUtc || at.isBefore(startedAt)) {
       throw const LoggingException('invalid_completion_time');
     }
-    if (!allWorkingSetsRecorded) {
+    if (!endEarly && !allWorkingSetsRecorded) {
       throw const LoggingException('unrecorded_sets');
     }
     return ProgramLog(
+      programVersion: programVersion,
+      endedEarly: endEarly,
       id: id,
       profile: profile,
       programId: programId,
@@ -226,17 +235,21 @@ class ProgramLog {
     'id': id,
     'profile': profile,
     'programId': programId,
-    'version': ownerProgramVersion,
+    'version': programVersion,
     'startedAt': startedAt.toIso8601String(),
     'completedAt': completedAt?.toIso8601String(),
+    if (endedEarly) 'endedEarly': true,
     'revision': revision,
     'sets': sets.map((s) => s.toJson()).toList(),
   };
   factory ProgramLog.fromJson(Map<String, dynamic> j) {
-    if (j['version'] != ownerProgramVersion) {
+    if (j['version'] is! String ||
+        !supportsOwnerProgram(j['version'] as String)) {
       throw const LoggingException('unsupported_program');
     }
     final result = ProgramLog(
+      programVersion: j['version'] as String,
+      endedEarly: j['endedEarly'] as bool? ?? false,
       id: j['id'] as String,
       profile: j['profile'] as String,
       programId: j['programId'] as String,
@@ -265,7 +278,12 @@ class ProgramLog {
     for (final s in result.sets) {
       result.validateSet(s);
     }
-    if (result.completed && !result.allWorkingSetsRecorded) {
+    if (result.endedEarly && !result.completed) {
+      throw const LoggingException('invalid_early_finish');
+    }
+    if (result.completed &&
+        !result.endedEarly &&
+        !result.allWorkingSetsRecorded) {
       throw const LoggingException('incomplete_record');
     }
     return result;
@@ -276,6 +294,12 @@ abstract interface class ProgramLogRepository {
   Future<List<ProgramLog>> load(String profile);
   Future<void> write(
     ProgramLog log, {
+    required int expectedRevision,
+    required String actionId,
+  });
+  Future<void> delete(
+    String profile,
+    String id, {
     required int expectedRevision,
     required String actionId,
   });

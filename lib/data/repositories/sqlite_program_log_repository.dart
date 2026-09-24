@@ -13,7 +13,7 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
   }) async {
     final db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
         await db.execute('PRAGMA synchronous = FULL');
@@ -23,6 +23,7 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
         }
       },
       onCreate: (db, version) async {
+        await _createDeletions(db);
         await db.execute(
           'CREATE TABLE logs(profile TEXT NOT NULL,id TEXT NOT NULL,revision INTEGER NOT NULL,completed INTEGER NOT NULL,payload TEXT NOT NULL,prescription TEXT NOT NULL,PRIMARY KEY(profile,id))',
         );
@@ -37,7 +38,10 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
         );
       },
       onUpgrade: (db, old, next) async {
-        throw const LoggingException('unsupported_schema');
+        if (old != 1 || next != 2) {
+          throw const LoggingException('unsupported_schema');
+        }
+        await _createDeletions(db);
       },
       onDowngrade: (db, old, next) async {
         throw const LoggingException('unsupported_schema');
@@ -45,6 +49,10 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
     );
     return SqliteProgramLogRepository._(db);
   }
+
+  static Future<void> _createDeletions(DatabaseExecutor db) => db.execute(
+    'CREATE TABLE deletions(profile TEXT NOT NULL,id TEXT NOT NULL,action TEXT NOT NULL,revision INTEGER NOT NULL,PRIMARY KEY(profile,id),UNIQUE(profile,action))',
+  );
 
   String _prescription(ProgramLog log) => jsonEncode({
     'id': log.plan.id,
@@ -118,6 +126,12 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
       'payload': payload,
     });
     await _db.transaction((txn) async {
+      final deleted = await txn.query(
+        'deletions',
+        where: 'profile=? AND (id=? OR action=?)',
+        whereArgs: [log.profile, log.id, actionId],
+      );
+      if (deleted.isNotEmpty) throw const LoggingException('deleted_workout');
       final receipts = await txn.query(
         'receipts',
         where: 'profile=? AND action=?',
@@ -156,6 +170,7 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
         if (old.revision != expectedRevision ||
             log.revision != expectedRevision + 1 ||
             old.programId != log.programId ||
+            old.programVersion != log.programVersion ||
             old.startedAt != log.startedAt) {
           throw const LoggingException('stale_or_invalid_revision');
         }
@@ -163,7 +178,7 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
         if (!old.completed &&
             log.completed &&
             log.sets.length == old.sets.length) {
-          expected = old.finish(log.completedAt!);
+          expected = old.finish(log.completedAt!, endEarly: log.endedEarly);
         } else {
           final changed = log.sets
               .where(
@@ -201,6 +216,87 @@ class SqliteProgramLogRepository implements ProgramLogRepository {
         'profile': log.profile,
         'action': actionId,
         'payload': receipt,
+      });
+    });
+  }
+
+  @override
+  Future<void> delete(
+    String profile,
+    String id, {
+    required int expectedRevision,
+    required String actionId,
+  }) async {
+    validateStorageId(profile);
+    validateStorageId(id);
+    validateStorageId(actionId);
+    if (expectedRevision < 0) throw const LoggingException('invalid_revision');
+    await _db.transaction((txn) async {
+      final deleted = await txn.query(
+        'deletions',
+        where: 'profile=? AND (id=? OR action=?)',
+        whereArgs: [profile, id, actionId],
+      );
+      if (deleted.isNotEmpty) {
+        if (deleted.length == 1 &&
+            deleted.single['id'] == id &&
+            deleted.single['action'] == actionId &&
+            deleted.single['revision'] == expectedRevision) {
+          return;
+        }
+        throw const LoggingException('action_conflict');
+      }
+      final receipts = await txn.query(
+        'receipts',
+        where: 'profile=?',
+        whereArgs: [profile],
+      );
+      if (receipts.any((r) => r['action'] == actionId)) {
+        throw const LoggingException('action_conflict');
+      }
+      final rows = await txn.query(
+        'logs',
+        where: 'profile=? AND id=?',
+        whereArgs: [profile, id],
+      );
+      if (rows.length != 1 || rows.single['revision'] != expectedRevision) {
+        throw const LoggingException('stale_or_missing_workout');
+      }
+      // Legacy receipts contain full actual payloads; remove them as well as
+      // revisions. Decode within the transaction so malformed data rolls back.
+      for (final receipt in receipts) {
+        final request =
+            jsonDecode(receipt['payload'] as String) as Map<String, dynamic>;
+        final log =
+            jsonDecode(request['payload'] as String) as Map<String, dynamic>;
+        if (log['profile'] != profile || log['id'] is! String) {
+          throw const LoggingException('invalid_receipt');
+        }
+        if (log['id'] == id) {
+          await txn.delete(
+            'receipts',
+            where: 'profile=? AND action=?',
+            whereArgs: [profile, receipt['action']],
+          );
+        }
+      }
+      await txn.delete(
+        'revisions',
+        where: 'profile=? AND id=?',
+        whereArgs: [profile, id],
+      );
+      await txn.delete(
+        'logs',
+        where: 'profile=? AND id=?',
+        whereArgs: [profile, id],
+      );
+      // Only opaque IDs and revision remain, preventing an old start retry from
+      // recreating the deleted workout. No prescription or actuals are retained.
+      await txn.insert('deletions', {
+        'profile': profile,
+        'id': id,
+        'action': actionId,
+        'revision': expectedRevision,
       });
     });
   }

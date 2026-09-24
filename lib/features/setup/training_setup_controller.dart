@@ -59,7 +59,14 @@ class TrainingSetupController extends ChangeNotifier {
     List<String>? exclusions,
     List<EquipmentSetup>? equipment,
     List<StartingLoad>? loads,
+    List<ReportedWorkingSetup>? reports,
+    List<RehearsalConfirmation>? rehearsals,
   }) => TrainingSetup(
+    schemaVersion: reports != null || rehearsals != null
+        ? 2
+        : saved?.schemaVersion ?? 1,
+    reportedWork: reports ?? saved?.reportedWork ?? [],
+    rehearsalConfirmations: rehearsals ?? saved?.rehearsalConfirmations ?? [],
     profileId: profileId,
     revision: (saved?.revision ?? -1) + 1,
     updatedAt: at,
@@ -72,6 +79,27 @@ class TrainingSetupController extends ChangeNotifier {
     equipment: equipment ?? saved?.equipment ?? [],
     startingLoads: loads ?? saved?.startingLoads ?? [],
   );
+
+  /// Append observations without changing equipment or confirmed baselines.
+  Future<bool> saveIntake({
+    List<ReportedWorkingSetup> reports = const [],
+    List<RehearsalConfirmation> rehearsals = const [],
+  }) async {
+    if (locked || !loaded) return false;
+    try {
+      requireSetup(reports.isNotEmpty || rehearsals.isNotEmpty, 'empty_intake');
+      return await _save(
+        _next(
+          at: now(),
+          reports: [...?saved?.reportedWork, ...reports],
+          rehearsals: [...?saved?.rehearsalConfirmations, ...rehearsals],
+        ),
+      );
+    } catch (_) {
+      return _invalid();
+    }
+  }
+
   Future<bool> savePreferences(
     List<int> days,
     String minutes,

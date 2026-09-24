@@ -54,6 +54,95 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
     super.dispose();
   }
 
+  Future<void> _deleteWorkout(ProgramLog log) async {
+    final c = controller;
+    if (c == null || c.locked) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${log.plan.day} workout?'),
+        content: Text(
+          '${log.plan.title}\n${log.startedAt.toLocal().toString().split(".").first}\n\nDelete this workout and its ${log.sets.length} saved records, including corrections? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete workout'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || c.locked) return;
+    if (await c.delete(log) && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Workout deleted')));
+    }
+  }
+
+  Future<void> _chooseToday() async {
+    final c = controller;
+    if (c == null || c.locked) return;
+    final plan = await showDialog<ProgramSession>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Choose today’s workout'),
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: Text(
+              'Choose any workout for today. Day names are labels from your original plan.',
+            ),
+          ),
+          for (final plan in ownerProgram)
+            SimpleDialogOption(
+              key: Key('choose_today_${plan.id}'),
+              onPressed: () => Navigator.pop(context, plan),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('${plan.day} · ${plan.title}'),
+              ),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (plan == null || !mounted || c.locked) return;
+    final draft = c.draft;
+    if (draft != null && draft.programId != plan.id) {
+      final end = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Finish ${draft.plan.day} early?'),
+          content: Text(
+            'Your unfinished ${draft.plan.title} workout has ${draft.sets.length} saved records. Keep those records and finish it early before starting ${plan.title}? Unrecorded sets will stay unrecorded.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep current workout'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Finish early and continue'),
+            ),
+          ],
+        ),
+      );
+      if (end != true || !mounted || c.locked) return;
+      c.select(draft.id);
+      if (!await c.finish(endEarly: true)) return;
+      if (!mounted) return;
+    }
+    await c.start(plan.id);
+  }
+
   Future<void> _edit(
     ProgramLog log,
     ProgramExercise exercise,
@@ -74,6 +163,7 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
       context: context,
       barrierDismissible: false,
       builder: (_) => _SetDialog(
+        log: log,
         exercise: exercise,
         index: index,
         side: side,
@@ -104,6 +194,15 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(log == null ? 'Workout log' : log.plan.day),
+          actions: [
+            if (log != null)
+              IconButton(
+                key: const Key('delete_selected_workout'),
+                tooltip: 'Delete workout',
+                onPressed: c!.locked ? null : () => _deleteWorkout(log),
+                icon: const Icon(Icons.delete_outline),
+              ),
+          ],
           leading: log == null
               ? null
               : IconButton(
@@ -133,6 +232,12 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
                       'Record what you actually did. These entries do not verify a baseline or enable weight recommendations.',
                     ),
                     if (c.busy) const LinearProgressIndicator(),
+                    OutlinedButton.icon(
+                      key: const Key('choose_today_workout'),
+                      onPressed: c.locked ? null : _chooseToday,
+                      icon: const Icon(Icons.calendar_today_outlined),
+                      label: const Text('Choose today’s workout'),
+                    ),
                     if (c.pending != null && c.error != null)
                       for (final set in c.pending!.sets.where(
                         (s) => !c.selected!.sets.contains(s),
@@ -179,7 +284,11 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
                       for (final saved in c.logs.where((l) => l.completed))
                         ListTile(
                           title: Text(
-                            '${saved.plan.day} · ${saved.hasSkips ? 'Finished with skipped sets' : 'Finished'}',
+                            '${saved.plan.day} · ${saved.endedEarly
+                                ? 'Finished early'
+                                : saved.hasSkips
+                                ? 'Finished with skipped sets'
+                                : 'Finished'}',
                           ),
                           subtitle: Text(
                             saved.startedAt
@@ -189,6 +298,14 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
                                 .first,
                           ),
                           onTap: c.locked ? null : () => c.select(saved.id),
+                          trailing: IconButton(
+                            key: Key('delete_workout_${saved.id}'),
+                            tooltip: 'Delete workout',
+                            onPressed: c.locked
+                                ? null
+                                : () => _deleteWorkout(saved),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
                         ),
                     ] else ...[
                       Text(
@@ -197,7 +314,9 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
                       ),
                       Text(
                         log.completed
-                            ? 'Saved workout · Tap a set to correct it'
+                            ? log.endedEarly
+                                  ? 'Finished early · Saved records kept'
+                                  : 'Saved workout · Tap a set to correct it'
                             : 'Draft · Each accepted set is saved',
                       ),
                       if (painExerciseNames.isNotEmpty)
@@ -332,12 +451,14 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
 
 class _SetDialog extends StatefulWidget {
   const _SetDialog({
+    required this.log,
     required this.exercise,
     required this.index,
     required this.side,
     required this.warmup,
     this.existing,
   });
+  final ProgramLog log;
   final ProgramExercise exercise;
   final int index;
   final LoggedSide side;
@@ -404,18 +525,7 @@ class _SetDialogState extends State<_SetDialog> {
         warmup: widget.warmup,
         skipped: skip,
       );
-      final plan = ownerProgram.firstWhere(
-        (p) => p.blocks.any((b) => b.exercises.contains(widget.exercise)),
-      );
-      ProgramLog(
-        id: 'validation',
-        profile: 'validation',
-        programId: plan.id,
-        startedAt: DateTime.utc(2026),
-        revision: 0,
-        completedAt: null,
-        sets: [],
-      ).validateSet(s);
+      widget.log.validateSet(s);
       Navigator.of(context).pop(s);
     } catch (_) {
       setState(

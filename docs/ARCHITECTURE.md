@@ -116,7 +116,7 @@ Each material decision should be recorded in `docs/decisions/` before implementa
 
 ## Warm-up target boundary
 
-`WarmupPolicy` calculates approved rehearsal-set targets from a matching verified baseline, explicit current gate and available settings. Its historical v1 entry point keeps missing/infeasible or bodyweight/assisted inputs blocked. Approved v2 bodyweight targets now use `BodyweightWarmupPolicy`, with separate assistance and verified range references. `externalWarmupV2` preserves the v1 external calculation; `evaluateWarmupContinuation` checks explicit feedback, rest, interruption and current gate without reading a clock. These standalone policies remain unconnected to storage/UI; see [ADR 0011](decisions/0011-approved-warmup-v2.md). It does not control live exercise execution. The five-minute walking requirement is applied once by future session composition. See [ADR 0008](decisions/0008-approved-warmup-policy.md).
+`WarmupPolicy` calculates approved rehearsal-set targets from a matching verified baseline, explicit current gate and available settings. Its historical v1 entry point keeps missing/infeasible or bodyweight/assisted inputs blocked. Approved v2 bodyweight targets now use `BodyweightWarmupPolicy`, with separate assistance and verified range references. `externalWarmupV2` preserves the v1 external calculation; `evaluateWarmupContinuation` checks explicit feedback, rest, interruption and current gate without reading a clock. These policies are now consumed by the standalone session composer; live execution/UI integration remains pending. See [ADR 0011](decisions/0011-approved-warmup-v2.md). It does not control live exercise execution. The session composer applies the five-minute walking requirement once. See [ADR 0008](decisions/0008-approved-warmup-policy.md).
 
 
 ## Durable practice logging
@@ -143,4 +143,55 @@ Production composition opens `SqlitePracticeRepository` and injects its pure-Dar
 
 `RecommendationSnapshot` owns schema-1 self-contained ordered targets and immutable version/input/evidence references. Historical reads use that snapshot, never the current `ownerProgram` constant. `GeneratedOccurrence` validates actuals against exact saved targets and permits one audited set mutation or terminal transition at a time. `GeneratedHistory` validates a complete profile envelope and provides progression exposures without dropping incomplete or incomparable occurrences. Stable program IDs scope history across program versions; version changes break comparability.
 
-`SqliteRecommendationHistoryRepository` implements the pure repository interface in a separate `recommendations.sqlite` store. Each mutation commits current state, prior revision, history revision and action receipt atomically. Reads validate relational identities, complete sequence and the audit chain. An older history revision invalidates unstarted recommendations while preserving active/historical prescriptions. Practice/manual data are never read by this adapter. There is no production composer/UI caller yet; storage does not approve a catalog or clear safety gates. Fresh cross-store input capture and eligibility checks belong to upcoming orchestration. See [ADR 0013](decisions/0013-recommendation-history-storage.md).
+`SqliteRecommendationHistoryRepository` implements the pure repository interface in a separate `recommendations.sqlite` store. Each mutation commits current state, prior revision, history revision and action receipt atomically. Reads validate relational identities, complete sequence and the audit chain. An older history revision invalidates unstarted recommendations while preserving active/historical prescriptions. Practice/manual data are never read by this adapter. The standalone composer consumes generated history and produces these snapshots; no live app caller is registered yet. Storage does not approve a catalog or clear safety gates. Fresh cross-store input capture and eligibility checks belong to upcoming orchestration. See [ADR 0013](decisions/0013-recommendation-history-storage.md).
+
+
+## Deterministic session composition
+
+`SessionComposer` calls the guarded evaluator, selects approved bound alternatives, consumes complete generated history and invokes progression and warm-up policies. It preserves ordered work, paired rounds and rest, adds walking once, and keeps proposed loads separate from confirmed targets. Recommendation payload schema 2 records rehearsal-specific identities, absent numeric rehearsal RIR, binding/rule references, per-slot reasons and proposed loads. Schema-1 historical encoding remains unchanged.
+
+`SessionGenerationService` depends on an atomic capture/compare-and-save source interface. No production implementation is registered: independent setup/history stores and missing durable safety/rehearsal inputs do not yet provide the required consistency boundary. All five templates have synthetic composition fixtures; real catalog activation and the full Day 4 exit remain pending. See [ADR 0014](decisions/0014-session-composition.md).
+
+
+## Owner program revision 2
+
+The owner approved three shoulder-press working sets on September 24. Current previews/new manual sessions use `owner-program-v2`; manual logs retain their stored program version, resolve its frozen prescription and cannot change versions during correction. Legacy setup snapshots round-trip their original version. The set-entry dialog validates against the selected log rather than the latest template. Generated plans use `owner-generated-v3`; progression rule thresholds are unchanged. No historical payload rewrite or SQL migration is performed.
+
+
+## Reported setup and persisted rehearsals
+
+Training-setup payload schema 2 adds append-only reported work and rehearsal attestations to the existing transactional aggregate, retaining schema-1 compatibility. Reports cannot become baselines or progression evidence. The controller preserves evidence during later edits; the composer consumes saved complete rehearsal attestations only after exact current equipment and reviewed catalog matching. Draft/unknown/stale data remain blocked; adverse reports cannot be silently cleared. See [ADR 0015](decisions/0015-reported-setup-and-rehearsal-storage.md). A production cross-store generation adapter and live intake UI remain pending.
+
+## Saved-workout lifecycle
+
+`SavedWorkoutService` reloads generated occurrences with their immutable saved
+prescriptions, prepares auditable set/terminal actions, and acknowledges them only
+after repository commit and validated reload. Program queue position is derived
+from committed terminal occurrences; explicit early finish advances once while
+interruption remains resumable. Calendar lookup requires explicit local-date
+conversion and schedules after the last terminal date. This backend service does
+not authorize exercise execution or connect the live UI. See [ADR 0016](decisions/0016-saved-workout-lifecycle.md).
+
+### Choosing today's manual workout
+
+The manual log exposes an explicit picker for any of the five approved templates,
+independent of today's weekday. Choosing the current draft resumes it. Choosing a
+different template asks to finish the draft early, preserving recorded sets; only
+a confirmed successful finish permits starting the selected template. These are
+two durable actions: if starting fails, the finished workout remains in history
+and the pending start can be retried. Opening/canceling the picker never writes.
+
+Manual logs optionally store `endedEarly: true` alongside the terminal timestamp.
+Older payloads omit the field and retain their encoding. Early completion permits
+unrecorded targets, keeps corrections limited to existing records, and remains
+ineligible for progression. Repository transition validation preserves the flag
+and prevents changing the prescription. The SQL schema and one-draft index are
+unchanged. This manual picker does not reset the adaptive program queue.
+
+### Individual manual workout deletion
+
+`ProgramLogController` coordinates confirmed deletion through its repository,
+retaining retry identity until a validated reload confirms absence. Manual SQLite
+schema 2 removes workout payloads, revisions and associated receipts atomically;
+minimal deletion identifiers prevent stale save retries from resurrecting a log.
+Schema-1 upgrades preserve existing payloads. See [ADR 0017](decisions/0017-delete-manual-workout.md).

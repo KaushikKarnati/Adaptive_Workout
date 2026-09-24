@@ -42,6 +42,78 @@ void main() {
     await repo.close();
     await deleteDatabase(path);
   });
+  testWidgets('early finish preserves records and permits another chosen day', (
+    _,
+  ) async {
+    final original = seed('early');
+    await repo.write(original, expectedRevision: -1, actionId: 'start');
+    final recorded = original.record(set());
+    await repo.write(recorded, expectedRevision: 0, actionId: 'set');
+    final ended = recorded.finish(DateTime.utc(2026, 1, 2), endEarly: true);
+    await repo.write(ended, expectedRevision: 1, actionId: 'early');
+    await repo.write(ended, expectedRevision: 1, actionId: 'early');
+    final friday = ProgramLog(
+      id: 'friday_session',
+      profile: 'early',
+      programId: 'friday',
+      startedAt: DateTime.utc(2026, 1, 2),
+      revision: 0,
+      completedAt: null,
+      sets: [],
+    );
+    await repo.write(friday, expectedRevision: -1, actionId: 'friday');
+    await repo.close();
+    repo = await SqliteProgramLogRepository.open(path: path);
+    final logs = await repo.load('early');
+    expect(logs, hasLength(2));
+    expect(logs.singleWhere((l) => !l.completed).programId, 'friday');
+    final old = logs.singleWhere((l) => l.completed);
+    expect(old.endedEarly, isTrue);
+    expect(old.sets.single.reps, 10);
+    final corrected = old.record(set(reps: 9));
+    await repo.write(corrected, expectedRevision: 2, actionId: 'correct');
+    expect(
+      (await repo.load('early')).singleWhere((l) => l.completed).endedEarly,
+      isTrue,
+    );
+  });
+  testWidgets(
+    'program revisions coexist without rewriting two-set shoulder history',
+    (_) async {
+      final old = ProgramLog.fromJson({
+        ...seed('legacy').toJson(),
+        'programId': 'wednesday',
+        'version': 'owner-program-v1',
+      });
+      final current = ProgramLog.fromJson({
+        ...seed('current').toJson(),
+        'programId': 'wednesday',
+      });
+      await repo.write(old, expectedRevision: -1, actionId: 'old');
+      await repo.write(current, expectedRevision: -1, actionId: 'new');
+      await repo.close();
+      repo = await SqliteProgramLogRepository.open(path: path);
+      final loadedOld = (await repo.load('legacy')).single;
+      final loadedNew = (await repo.load('current')).single;
+      expect(loadedOld.toJson(), old.toJson());
+      expect(loadedOld.plan.blocks.first.exercises.single.sets, 2);
+      expect(loadedNew.plan.blocks.first.exercises.single.sets, 3);
+      final changedVersion = ProgramLog.fromJson({
+        ...old.toJson(),
+        'version': 'owner-program-v2',
+        'revision': 1,
+      });
+      await expectLater(
+        repo.write(
+          changedVersion,
+          expectedRevision: 0,
+          actionId: 'invalid_change',
+        ),
+        throwsA(isA<LoggingException>()),
+      );
+      expect((await repo.load('legacy')).single.toJson(), old.toJson());
+    },
+  );
   testWidgets('native receipts corrections isolation and reopen', (_) async {
     var log = seed('a');
     await repo.write(log, expectedRevision: -1, actionId: 'start');
@@ -112,7 +184,7 @@ void main() {
       final db = await openDatabase(path);
       await db.update('logs', {'prescription': '{}'});
       await expectLater(repo.load('a'), throwsA(isA<LoggingException>()));
-      await db.execute('PRAGMA user_version=2');
+      await db.execute('PRAGMA user_version=3');
       await repo.close();
       await expectLater(
         SqliteProgramLogRepository.open(path: path),
@@ -123,6 +195,124 @@ void main() {
       await inspect.close();
     },
   );
+  testWidgets(
+    'v1 upgrade and deletion remove records, audits and receipts without resurrection',
+    (_) async {
+      final original = seed('delete_me');
+      await repo.write(original, expectedRevision: -1, actionId: 'start');
+      final recorded = original.record(set());
+      await repo.write(recorded, expectedRevision: 0, actionId: 'set');
+      await repo.write(seed('other'), expectedRevision: -1, actionId: 'start');
+      await repo.close();
+      final legacy = await openDatabase(path);
+      await legacy.execute('DROP TABLE deletions');
+      await legacy.execute('PRAGMA user_version=1');
+      final before = await legacy.query('logs');
+      await legacy.close();
+      repo = await SqliteProgramLogRepository.open(path: path);
+      final db = await openDatabase(path);
+      expect(await db.query('logs'), before);
+      expect(await db.getVersion(), 2);
+      await expectLater(
+        repo.delete(
+          'delete_me',
+          original.id,
+          expectedRevision: 0,
+          actionId: 'delete',
+        ),
+        throwsA(isA<LoggingException>()),
+      );
+      await expectLater(
+        repo.delete(
+          'missing',
+          original.id,
+          expectedRevision: 1,
+          actionId: 'delete',
+        ),
+        throwsA(isA<LoggingException>()),
+      );
+      await expectLater(
+        repo.delete(
+          'delete_me',
+          original.id,
+          expectedRevision: 1,
+          actionId: 'set',
+        ),
+        throwsA(isA<LoggingException>()),
+      );
+      // Failure late in deletion must restore receipts and revisions too.
+      await db.execute(
+        "CREATE TRIGGER reject_delete BEFORE DELETE ON logs BEGIN SELECT RAISE(ABORT, 'fixture'); END",
+      );
+      await expectLater(
+        repo.delete(
+          'delete_me',
+          original.id,
+          expectedRevision: 1,
+          actionId: 'delete',
+        ),
+        throwsA(isA<DatabaseException>()),
+      );
+      expect((await repo.load('delete_me')).single.sets.single.reps, 10);
+      expect(
+        await db.query(
+          'receipts',
+          where: 'profile=?',
+          whereArgs: ['delete_me'],
+        ),
+        hasLength(2),
+      );
+      expect(
+        await db.query(
+          'revisions',
+          where: 'profile=?',
+          whereArgs: ['delete_me'],
+        ),
+        hasLength(1),
+      );
+      await db.execute('DROP TRIGGER reject_delete');
+      await repo.delete(
+        'delete_me',
+        original.id,
+        expectedRevision: 1,
+        actionId: 'delete',
+      );
+      for (final table in ['logs', 'revisions', 'receipts']) {
+        expect(
+          await db.query(table, where: 'profile=?', whereArgs: ['delete_me']),
+          isEmpty,
+        );
+      }
+      await repo.close();
+      repo = await SqliteProgramLogRepository.open(path: path);
+      await repo.delete(
+        'delete_me',
+        original.id,
+        expectedRevision: 1,
+        actionId: 'delete',
+      );
+      await expectLater(
+        repo.delete(
+          'delete_me',
+          original.id,
+          expectedRevision: 1,
+          actionId: 'different',
+        ),
+        throwsA(isA<LoggingException>()),
+      );
+      await expectLater(
+        repo.write(original, expectedRevision: -1, actionId: 'start'),
+        throwsA(isA<LoggingException>()),
+      );
+      await expectLater(
+        repo.write(original, expectedRevision: -1, actionId: 'new_start'),
+        throwsA(isA<LoggingException>()),
+      );
+      expect(await repo.load('delete_me'), isEmpty);
+      expect(await repo.load('other'), hasLength(1));
+    },
+  );
+
   testWidgets('completed sessions retain corrections without duplicate work', (
     _,
   ) async {
