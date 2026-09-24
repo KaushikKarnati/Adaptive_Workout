@@ -14,12 +14,17 @@ If a requirement is ambiguous, identify the ambiguity. Do not invent product beh
 
 ## Architecture rules
 
-- Keep domain logic independent of Flutter widgets, databases, and network services.
-- Widgets must not contain workout-generation or progression rules.
-- Database access must occur through repositories, never directly from widgets.
+- Keep domain logic independent of SwiftUI views, databases, and network services.
+- Views must not contain workout-generation or progression rules.
+- Database access must occur through repositories, never directly from views.
 - The workout engine must produce the same output for the same explicit inputs.
 - Avoid unnecessary dependencies. Explain and obtain approval before adding one.
 - Preserve offline operation for all core workout functionality.
+- Open `native/AdaptiveWorkout.xcodeproj` for the app; the local package is `native/Packages/WorkoutCore`. The deployment minimum is iOS 17.
+- Put pure rules/records in `WorkoutDomain`, coordinated actions in `WorkoutApplication`, and SQLite adapters in `WorkoutPersistence`. Domain code must not import SwiftUI, UIKit, Combine, or SQLite.
+- Keep observable presentation state on the main actor and database serialization inside repository boundaries.
+- Preserve canonical legacy JSON, exact integer loads/timestamps, receipts, audit revisions, profile isolation, and the separation of manual/practice/generated evidence.
+- Retain approved review and safety gates. A Swift migration does not activate recommendations or supply missing verification.
 
 ## Security and privacy
 
@@ -40,12 +45,17 @@ If a requirement is ambiguous, identify the ambiguity. Do not invent product beh
 Before declaring implementation complete, run when available:
 
 ```bash
-dart format --output=none --set-exit-if-changed .
-flutter analyze
-flutter test
+xcrun swift-format lint --strict --recursive native/AdaptiveWorkout native/AdaptiveWorkoutUITests native/Packages/WorkoutCore/Sources native/Packages/WorkoutCore/Tests native/Packages/WorkoutCore/Package.swift
+swift build --build-tests --package-path native/Packages/WorkoutCore
+swift test --package-path native/Packages/WorkoutCore
+xcodebuild -project native/AdaptiveWorkout.xcodeproj -scheme AdaptiveWorkout -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
 Report commands that could not run and why. Never claim a check passed unless it ran successfully.
+
+`AdaptiveWorkoutTests` hosts the core tests on iOS; `AdaptiveWorkoutUITests` covers critical native interactions. Select an explicit supported destination when running Xcode tests. Respect the user's current testing scope: skipped physical-device checks remain unverified, not silently replaced with claimed device acceptance. Test only isolated fixture stores. A package test or build does not establish installed-app persistence, haptic comfort, accessibility acceptance, or real-data transfer.
+
+The maintained app has no Flutter runtime requirement. Historical Dart evidence and prior implementation remain in Git history; current native results and migration limitations belong in `docs/SWIFT_MIGRATION_STATUS.md`.
 
 ## Change discipline
 

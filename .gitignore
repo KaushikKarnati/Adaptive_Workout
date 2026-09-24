@@ -1,38 +1,37 @@
-# Dart and Flutter
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
+# Apple / Swift / Xcode
+.DS_Store
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcresult
+
+# Local IDE settings
+.idea/
+.vscode/
+*.iml
+
+# Generated build artifacts
 build/
 coverage/
 
-# IDEs
-.idea/
-*.iml
-.vscode/
-
-# Apple / Xcode
-.DS_Store
-DerivedData/
-ios/Flutter/ephemeral/
-ios/Pods/
-macos/Flutter/ephemeral/
-
-# Android
-android/.gradle/
-android/local.properties
-*.jks
-*.keystore
-
-# Secrets and environment overrides
+# Secrets and signing material
 .env
 .env.*
 !.env.example
 *.p12
 *.mobileprovision
+*.jks
+*.keystore
 secrets/
 
 # Logs and temporary files
 *.log
 *.tmp
+
+# Ignored remnants from a pre-migration local Flutter checkout
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/

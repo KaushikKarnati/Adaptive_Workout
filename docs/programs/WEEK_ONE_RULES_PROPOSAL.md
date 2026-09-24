@@ -14,7 +14,7 @@ The [official ACSM summary](https://www.acsm.org/wp-content/uploads/2026/03/Resi
 
 - Use the supplied five-session program for week one; defer the old barbell benchmark goals.
 - Monday and Friday final supersets have three paired rounds, including three fly sets.
-- One initial tester; pounds; iOS support starts at Flutter's supported minimum.
+- One initial tester; pounds; iOS support starts at iOS 17 under the native migration (ADR 0018).
 
 ## Approved rules
 

@@ -1,18 +1,20 @@
 # Architecture
 
-Status: initial direction; decisions requiring product or scientific judgment remain unapproved.
+Status: native Swift/SwiftUI architecture for the owner-authorized iOS-first migration. Product/science decisions and existing safety gates remain unchanged. Native verification and data-cutover status are tracked in [Migration evidence](SWIFT_MIGRATION_STATUS.md); this document does not claim final acceptance.
 
 ## System boundary
 
-Version 1 is an offline-first Flutter application. Core workout generation, logging, history, and progress analysis run locally. No user account or cloud backend is required for the first validated release.
+The maintained application is an offline-first SwiftUI iOS app, targeting iOS 17 and later. Open `native/AdaptiveWorkout.xcodeproj` in Xcode. Pure Swift rules, logging, history and storage live in the local `native/Packages/WorkoutCore` package. Core operation requires neither a Flutter runtime nor an account, network service or cloud backend. Android is deferred until the iOS app proves useful.
+
+The application exposes approved manual logging and descriptive history. The adaptive engine remains a standalone backend: its presence does not enable real recommendations or bypass pending catalog, safety, equipment, baseline or cross-store orchestration work. See [ADR 0018](decisions/0018-native-swift-migration.md). Historical ADRs preserve the original decisions and validation evidence; references there to Dart, Flutter and previous test counts describe the earlier implementation.
 
 ## Presentation and appearance
 
-Shared `AppTheme` colors/type/control styles and `AppContent`/header/notice widgets support the current screens and future additions; see [Interface design](UI_DESIGN.md). Widgets continue to delegate application actions to controllers and do not gain workout-generation rules.
+`AdaptiveWorkoutApp` composes `HomeView`, `ProgramLogController` and local repositories. `SettingsView`, `SetupView`, `HistoryView` and `SetEditor` use native SwiftUI controls, semantic colors and system typography. Views delegate mutations to application/presentation controllers and never calculate training rules or execute SQL. See [Interface design](UI_DESIGN.md).
 
-`AppearanceController` maps the local System/Light/Dark preference to Flutter `ThemeMode`. System is the default. The pure `AppearancePreferencesRepository` contract is implemented by `SqliteAppearanceRepository` in the separate schema-1 `appearance.sqlite` store, containing only the appearance preference. App composition loads it before launching the normal UI; selection is applied after a successful save, and failures are surfaced through controller state. Appearance selection does not read or mutate training data, and no new dependency or network service is introduced.
+`AppModel` loads and applies System/Light/Dark through SwiftUI's preferred color scheme. System is the default. `SqliteAppearanceRepository` keeps the validated preference in the separate schema-1 `appearance.sqlite` store; selection is acknowledged after save/readback. Appearance does not read or mutate training records.
 
-`AppHaptics` supplies optional presentation feedback through an iOS UIKit method channel. It is scoped above navigation, handles device unavailability without blocking user actions, and stores only the enabled flag in native UserDefaults. Widgets emit semantic cues on explicit interaction or acknowledged controller results; domain policies and workout repositories have no haptic dependency. Native playback requires an active app and enabled preference. See the haptic mapping in [Interface design](UI_DESIGN.md).
+`AppModel.cue` provides presentation-only UIKit selection, light impact and notification feedback. Explicit interactions and acknowledged results request semantic cues; an enabled UserDefaults preference and active application state guard playback. The existing `adaptiveWorkout.hapticsEnabled` key is retained. Domain policies and workout repositories have no haptic dependency, and unavailable feedback never blocks a workout action. The privacy manifest declares app-only UserDefaults access.
 
 ## Intended dependency direction
 
@@ -26,9 +28,9 @@ Presentation -> Application -> Domain
              Data implementations
 ```
 
-The domain layer must not depend on Flutter, Drift, RevenueCat, analytics, or platform APIs.
+`WorkoutDomain` uses Foundation/CoreFoundation for value types and strict codecs, plus CryptoKit for deterministic SHA-256 integrity. It must not depend on SwiftUI, UIKit, Combine, databases, networking, analytics or subscription SDKs. Views and observable controllers stay on the main actor. Repository adapters serialize database operations; deterministic policies accept explicit inputs rather than consulting runtime state.
 
-## Planned modules
+## Domain scope
 
 - Versioned exercise catalog with license and provenance metadata
 - Exercise eligibility and ranking
@@ -41,32 +43,36 @@ The domain layer must not depend on Flutter, Drift, RevenueCat, analytics, or pl
 - Workout logging and history
 - Recommendation explanations
 
-## Planned Flutter layout
+Implemented areas include catalog validation/integrity, guarded eligibility, progression, warm-ups, planning, composition, logging/history, and recommendation snapshots/lifecycle. The list above is the product architecture scope, not a claim that ranking, volume, fatigue or time optimization have independently approved implementations.
+
+## Native layout
 
 ```text
-lib/
-  core/
-  data/
-    database/
-    repositories/
-  domain/
-    exercises/
-    progression/
-    readiness/
-    volume/
-    workout/
-  features/
-    onboarding/
-    workout/
-    history/
-    progress/
-    settings/
-  design/
+native/
+  AdaptiveWorkout.xcodeproj
+  AdaptiveWorkout/                  SwiftUI app, composition, native feedback, assets
+  AdaptiveWorkoutUITests/           Native interaction tests
+  Packages/WorkoutCore/
+    Sources/WorkoutDomain/          Pure rules, immutable records, codecs and contracts
+    Sources/WorkoutApplication/     Controllers, generation/lifecycle services, timing
+    Sources/WorkoutPersistence/     SQLite adapters and pinned source import/projection
+    Sources/CSQLite/                Apple's system SQLite module bridge
+    Tests/WorkoutCoreTests/         Rules, controllers, persistence and parity fixtures
 ```
 
-This layout is a starting boundary, not permission to create every folder or abstraction before it is needed.
+The package contains application-owned code; it does not download a third-party library. The app uses Apple's bundled SQLite through `SQLiteDatabase`. This is a language/runtime migration with preserved store contracts, not a switch to SwiftData.
+
+## Storage and compatibility
+
+Each store remains separate: `program_logging.sqlite` (SQL schema 2), `training_setup.sqlite`, `recommendations.sqlite`, `adaptive_workout.sqlite` (practice), `gym_profiles.sqlite` and `appearance.sqlite` (SQL schema 1). SQL versions and JSON payload versions are separate concerns. Adapters use bound SQL values and transactions, preserve prior payloads/action receipts where specified, reject unsupported schemas and never clear a store to recover from a read failure.
+
+`ManualJSON` reproduces ordered Dart JSON encoding and exact UTF-8 receipt comparison. `ManualTimestamp` preserves integer microseconds with proleptic Gregorian conversion; `Date` is a presentation/interoperation view, not the authority for legacy bytes. Pounds remain integer millionths. Legacy optional-field omission, frozen program versions and audit identities survive decoding and correction.
+
+Stores live in the app's Documents directory, matching the former iOS SQLite location within a given sandbox. The development native bundle has a separate sandbox, so equivalent paths do not automatically transfer the installed Flutter app's data. A protected production transfer/replacement and rollback proof remain separate from source migration. `StorageLaunchContext` confines Debug test/reset options and hosted tests to isolated fixture directories and preference domains. Production data must never be cleared by test setup.
 
 ## Data flow
+
+This is the recommendation-service pipeline. The live manual logger invokes logging/history actions and does not register production generation.
 
 1. The UI submits explicit goals, constraints, workout results, or exception feedback.
 2. An application controller validates and coordinates the action.
@@ -78,7 +84,7 @@ This layout is a starting boundary, not permission to create every folder or abs
 
 ## Deterministic recommendation boundary
 
-The engine must accept all decision-relevant state as explicit input. It must not depend on widget state, wall-clock time, network responses, unseeded randomness, iteration order, or hidden mutable state.
+The engine must accept all decision-relevant state as explicit input. It must not depend on view state, wall-clock time, network responses, unseeded randomness, iteration order, or hidden mutable state.
 
 A recommendation result should contain:
 
@@ -97,21 +103,21 @@ The catalog repository loads a reviewed, version-pinned wger exercise-data snaps
 
 The domain consumes only validated internal catalog entities, never raw upstream records. Ingestion treats all upstream text and metadata as untrusted, converts permitted content to the approved plain-text and enum representation, rejects malformed or unsupported values, and produces a reproducible snapshot manifest and integrity digest. Instructions and any future media are presentation content and must not become hidden sources of domain behavior.
 
-Catalog version `2026.09.08.1` is the first real source-backed slice and contains only the three approved benchmark identities. Its typed projection and pinned mapper fixture are offline and integrity tested. All entries remain disabled, and no application composition code loads the slice, until the pending review gates in `docs/catalog/BENCHMARK_CATALOG_2026_09_08.md` are complete.
+Catalog version `2026.09.08.1` is the first real source-backed slice and contains only the three approved benchmark identities. Its typed projection, pinned mapper fixture and integrity checks remain offline; current native test evidence is recorded separately. All entries remain disabled, and no application composition code loads the slice, until the pending review gates in `docs/catalog/BENCHMARK_CATALOG_2026_09_08.md` are complete.
 
 The minimal internal entity and snapshot contract is defined in `EXERCISE_CATALOG.md`, its controlled IDs and bounds are defined in `EXERCISE_TAXONOMIES.md`, and the upstream mapping boundary is defined in `WGER_MAPPING.md`. The approved structural hard-filter and separate safety-gate boundary is defined in `EXERCISE_ELIGIBILITY.md`; exercise-specific mappings and clinical or training-science behavior remain gated by that document. Source DTOs, mapping-review records, import code, storage records, domain entities, and presentation models remain separate representations. Only the domain entity may cross into exercise selection.
 
-The application-facing structural eligibility entry point is `ExerciseEligibilityEvaluator`. It receives the trusted, preconfigured catalog validator from the application composition boundary, revalidates the complete catalog and request envelope, recomputes the canonical constraint digest, invokes the private safety gate, and only then invokes the private eligibility filter. The filter receives an eligibility-only immutable projection, preventing presentation, provenance, muscle, benchmark, and relationship fields from becoming hidden inputs. Lower-level gate and filter types are library-private so callers cannot bypass validation. The implementation is tested with synthetic entries and is not connected to the sample workout UI or real recommendations.
+The application-facing structural eligibility entry point is `ExerciseEligibilityEvaluator`. It receives the trusted, preconfigured catalog validator from the application composition boundary, revalidates the complete catalog and request envelope, recomputes the canonical constraint digest, invokes the private safety gate, and only then invokes the private eligibility filter. The filter receives an eligibility-only immutable projection, preventing presentation, provenance, muscle, benchmark, and relationship fields from becoming hidden inputs. Lower-level gate and filter types are library-private so callers cannot bypass validation. Synthetic fixtures exercise this boundary; it is not registered as a live recommendation flow. Native test results belong in the migration evidence log.
 
 ## Week-one progression boundary
 
-`LoadProgressionPolicy` implements the approved two-exposure external-load adjustment and bodyweight/assistance hold policy with explicit immutable inputs. It returns a candidate load, reason code, rule version and evidence IDs; it is not a complete workout recommendation. It is not connected to the sample UI. Future application orchestration must map a freshly evaluated safety/eligibility result into its explicit gate and supply verified baseline/equipment and complete history. Missing or blocked gates return no candidate load. See [ADR 0007](decisions/0007-approved-week-one-progression.md) for exact load representation and history requirements.
+`LoadProgressionPolicy` implements the approved two-exposure external-load adjustment and bodyweight/assistance hold policy with explicit immutable inputs. It returns a candidate load, reason code, rule version and evidence IDs; it is not a complete workout recommendation. It is not connected to the live manual logger as an automatic load selector. Future application orchestration must map a freshly evaluated safety/eligibility result into its explicit gate and supply verified baseline/equipment and complete history. Missing or blocked gates return no candidate load. See [ADR 0007](decisions/0007-approved-week-one-progression.md) for exact load representation and history requirements.
 
 ## Deferred decisions
 
-- Exact package and feature boundaries
-- Real-workout schema migrations beyond the approved practice SQLite schema
-- Riverpod provider structure
+- Future package splits beyond the current domain/application/persistence boundaries
+- New storage formats or schema migrations beyond the preserved contracts
+- Production atomic cross-store capture and generated-workout orchestration
 - Backup/export format
 - Analytics and crash-reporting policy
 - Subscription entitlement behavior
@@ -129,11 +135,11 @@ Each material decision should be recorded in `docs/decisions/` before implementa
 
 ## Durable practice logging
 
-When explicitly injected for development/testing, `PracticeBootstrap` opens `SqlitePracticeRepository` and injects its pure-Dart `PracticeRepository` interface into `PracticeController`. The screen invokes controller actions and acknowledges success only after the transaction and subsequent read succeed. The controller keeps a pending action for safe retry, blocks duplicate in-flight submissions, and does not log database errors or personal values. Record corrections preserve prior payloads while history reads the current set once. Explicit practice-only records never feed the workout engine. SQLite schema v1, limitations and device test isolation are documented in [ADR 0009](decisions/0009-local-workout-storage.md).
+Debug builds can explicitly expose developer practice with the `--practice` launch argument. `PracticeSettingsModel` calls the pure `PracticeRepository` contract implemented by `SqlitePracticeRepository`, retaining the existing `local_owner` context in the separate practice store. The UI acknowledges success after commit and validated reload, retains pending intent for retry, and blocks competing changes. Corrections preserve prior payloads while current history reads each set once. Practice never contributes recommendation evidence. SQLite schema-1 semantics and the historical implementation decision remain in [ADR 0009](decisions/0009-local-workout-storage.md).
 
 ## Approved program preview
 
-`owner_program.dart` is a constant, versioned transcription of the owner-approved prescriptions, with ordered blocks, paired supersets, P1 effort targets, P3 rests and P7 alternative preferences. These template IDs are not catalog identities and do not bypass catalog eligibility, setup verification or baseline checks. `ProgramPage` renders the templates read-only. No real-session database writes, automatic scheduling, load selection or optional finisher execution are enabled by this preview.
+`OwnerProgram.swift` contains the constant, versioned transcription of the owner-approved prescriptions, with ordered blocks, paired supersets, P1 effort targets, P3 rests and P7 alternative preferences. These template IDs are not catalog identities and do not bypass catalog eligibility, setup verification or baseline checks. `SettingsView` renders the templates read-only. No real-session database writes, automatic scheduling, load selection or optional finisher execution are enabled by this preview.
 
 ## Manual program logging
 
@@ -143,7 +149,7 @@ When explicitly injected for development/testing, `PracticeBootstrap` opens `Sql
 
 ### Local setup preparation
 
-`TrainingSetupPage` delegates preferences, equipment drafts and explicit starting-load confirmations to `TrainingSetupController`, through the pure `TrainingSetupRepository` interface. `SqliteTrainingSetupRepository` stores versioned aggregates and atomic action receipts in a separate local database. Equipment revision changes make prior starting loads stale. Preparation variation keys are not approved catalog identities; these records do not enable recommendations. See [ADR 0012](decisions/0012-verified-training-setup-storage.md). The owner selected Monday–Friday and 60 minutes and will verify equipment gradually; these are owner preferences, not global defaults.
+`SetupView` and its presentation adapter delegate preferences, equipment drafts and explicit starting-load confirmations to `TrainingSetupController`, through the pure `TrainingSetupRepository` protocol. `SqliteTrainingSetupRepository` stores versioned aggregates and atomic action receipts in a separate local database. Equipment revision changes make prior starting loads stale. Preparation variation keys are not approved catalog identities; these records do not enable recommendations. See [ADR 0012](decisions/0012-verified-training-setup-storage.md). The owner selected Monday–Friday and 60 minutes and will verify equipment gradually; these are owner preferences, not global defaults.
 
 `SessionPlanningPolicy` independently maps an explicit ordered program, user-selected weekdays, scoped occurrence history and requested civil date to a next slot/date or resumable draft. Completed and explicitly ended-early occurrences advance; missed days do not. It does not determine exercise eligibility, recovery or load. `compareSessionDuration` reports an advisory comparison to a positive user preference, without enforcing a 45–60-minute limit or estimating durations. Both are standalone pure policies, not yet wired to storage or the app. [Day-one contracts](programs/DAY_ONE_CONTRACTS_2026_09_23.md) define the forthcoming immutable records, target-confirmation boundary and catalog review packet.
 
@@ -206,7 +212,7 @@ Schema-1 upgrades preserve existing payloads. See [ADR 0017](decisions/0017-dele
 
 ## Primary app entry
 
-The normal app entry is `WorkoutHomePage`, a persistent two-tab shell: Workout
+The normal app entry is `AdaptiveWorkoutApp` with `HomeView`, a persistent two-tab shell: Workout
 and Settings. Workout contains the manual logger and inline searchable history
 and graphs; opening a saved record selects it in the same logger. Settings has
 lazily created, state-preserving disclosures for appearance and haptics, program,
@@ -218,7 +224,7 @@ and saved data are preserved. Hiding practice does not delete it.
 
 ### Manual session timing
 
-The presentation-only `SessionTimerPanel` derives total elapsed time from existing
+The presentation-only timer controls in `HomeView` derive total elapsed time from existing
 saved start/completion timestamps. `RestCountdown` stores an in-memory deadline
 selected explicitly from the displayed prescription block. UI refresh ticks do
 not accumulate time or mutate workout data; resume recomputes from timestamps.
@@ -233,19 +239,30 @@ for background, restart and notification limitations.
 Settings contains local gym profiles with explicit equipment availability,
 per-location corrections and offline selection persistence. The pure gym domain
 is separate from exact training setups and does not authorize recommendations.
-`GymProfileController` validates save acknowledgements; the separate schema-1
+`GymSettingsModel` validates exact save acknowledgements and exposes explicit conflict reload; the separate schema-1
 `gym_profiles.sqlite` adapter uses transactional compare-and-save. Homewood has
 location metadata only, with all equipment initially unknown. See
 [Gym profiles](GYM_PROFILES.md) for provenance, boundaries and validation.
 
 ### Manual history presentation
 
-`WorkoutHistoryPage` loads profile-scoped manual logs through
-`ProgramLogController` and `ProgramLogRepository`. Pure-Dart descriptive
-projections in `domain/history/workout_history.dart` filter finished logs and
-partition comparable recorded sets. Graphs use Flutter painting with accessible
-exact-value disclosure; no additional dependency or schema is introduced.
-The embedded history callback reloads and selects a saved record in the existing
-manual logger. Returning to history refreshes its repository view while retaining
-filters. Standalone history retains initial-session routing for explicit test or
-development injection only. Recommendations and their evidence adapters are unaffected.
+`HistoryView` loads profile-scoped manual logs through `ProgramLogController` and
+`ProgramLogRepository`. Pure Swift projections in `History.swift` filter finished
+logs and partition comparable recorded sets. SwiftUI renders descriptive graphs
+with an accessible exact-value disclosure; no additional dependency or schema is
+introduced. Opening a source workout selects it in the existing logger. Returning
+to history refreshes its repository view while retaining filters. Drafts/practice
+remain excluded, and recommendation evidence adapters are unaffected.
+
+## Verification boundary
+
+Run the native format/build/package checks listed in `AGENTS.md` and record exact
+results in [Migration evidence](SWIFT_MIGRATION_STATUS.md). Xcode exposes the app,
+hosted core-test and UI-test targets. Build success, package-test success, native
+interaction checks and protected installed-data cutover are distinct claims. The
+owner deferred further physical-device checking at this migration checkpoint;
+remaining device behavior and accessibility acceptance must stay explicitly
+unverified. The Flutter reference is retained in Git history, not as a required
+runtime for the maintained app.
+
+Independent appearance-store failures are reported with a retry while workout storage remains usable. Pending manual actions expose their submitted values separately from committed records until exact reload acknowledgement succeeds.

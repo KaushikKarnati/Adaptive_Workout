@@ -21,7 +21,7 @@ It does not add workout selection, ranking, prescription, progression, substitut
 - Retrieved at: `2026-09-08T23:14:03Z`
 - Upstream revision: unavailable; recorded as `null`
 - Upstream endpoint: `https://wger.de/api/v2/`
-- Pinned importer fixture: `test/fixtures/wger/benchmark_snapshot_2026_09_08.json`
+- Pinned importer fixture: `native/ReferenceFixtures/wger/benchmark_snapshot_2026_09_08.json`
 - Pinned fixture SHA-256: `ddd51de5e62e43fb768085840173b77c6f392ba28459d02a4a5f481fd8aa5721`
 - Canonical reviewed-entry SHA-256: `4bda4d4b43bba409c66585acb76d88c871cda97d9b13ca0fe732595488578eb4`
 

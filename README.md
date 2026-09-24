@@ -1,61 +1,45 @@
 # Adaptive Workout
 
-An offline-first mobile application that generates deterministic, evidence-informed workouts from a user's training history, equipment, goals, performance, and readiness.
+Native iOS app written in Swift and SwiftUI, with an offline SQLite store and a deterministic workout engine. iOS comes first; Android is deferred.
 
-## Current status
-
-A physical-iPhone manual-program logger with local SQLite storage, plus standalone eligibility, progression, warm-up and calendar-planning domain policies. The app opens to the Training home, with direct access to workout logging, the program preview and training setup. System appearance is the default, with optional locally saved Light and Dark choices. Practice screens are hidden from normal navigation, with their existing data preserved. See [Interface design](docs/UI_DESIGN.md) for the shared design system.
-
-The preserved practice flow saves practice sessions, distinct sets, skips, corrections and completion, resumes a saved draft, and displays history. Save confirmation follows a committed transaction; failed saves retain input for safe retry. Practice records never affect real recommendations. The original temporary sample flow remains available through explicit demo/test injection. Recommendation-linked backend storage and a progression-history adapter are implemented and tested separately; a deterministic composer now covers all five templates with synthetic inputs. Real reviewed catalog activation, atomic input acquisition and live app integration remain pending. See [Day 4 composition](docs/decisions/0014-session-composition.md).
-
-The approved structural exercise-eligibility and safety gate is implemented with synthetic domain tests, but it is not connected to the sample UI or used to generate real workouts.
-
-A real wger-backed catalog slice now pins the three approved benchmark identities and attribution under catalog version `2026.09.08.1`. The entries remain disabled pending science, safety, equipment, and licensing review and are not connected to workout generation.
-
-User-selected training days and advisory session-duration preferences are defined in [the Day-one contracts](docs/programs/DAY_ONE_CONTRACTS_2026_09_23.md). Local setup preferences, equipment drafts and explicit starting-load confirmations are saved through the setup screen. Calendar planning remains independent; generated-session storage now has stable sequence and active/completed/ended-early states, while the composer now selects approved alternatives from eligible verified inputs. Live scheduling, proposed-load confirmation and application integration remain pending. The owner’s ChatGPT-created program is being tested personally; catalog review is not complete.
-
-## Planned stack
-
-- Flutter and Dart
-- Riverpod for state management
-- SQLite through the approved sqflite package for local persistence
-- RevenueCat for subscriptions in a later phase
-- GitHub Actions for continuous integration
-
-## Core principles
-
-- Offline-first and privacy-first
-- No LLM dependency for workout generation
-- Deterministic, independently testable workout engine
-- Business logic separated from UI and persistence
-- Small, reviewed changes with automated tests
-
-## Start here
-
-1. Read `AGENTS.md`.
-2. Follow `docs/STEP_01_MAC_SETUP.md` on the development Mac.
-3. Complete and approve `docs/PRODUCT.md` before implementing domain logic.
-4. Read `docs/EXERCISE_CATALOG.md` and `docs/EXERCISE_TAXONOMIES.md` before changing catalog ingestion or exercise entities.
-5. Read `docs/EXERCISE_ELIGIBILITY.md` before implementing safety or exercise filtering; its structural contract is approved, while exercise mappings and clinical or training-science behavior remain gated.
-6. Read `docs/catalog/BENCHMARK_CATALOG_2026_09_08.md` before changing the pinned benchmark slice.
-7. Record significant architectural decisions in `docs/decisions/`.
-
-
-## Storage checks
-
-Run the usual format/analyze/unit tests, then the following on the connected physical iPhone (replace `DEVICE_ID`). Keep this order: the first test leaves three acknowledged fixture records, and the second verifies them in a new app process.
+## Open in Xcode
 
 ```sh
-flutter test integration_test/practice_repository_test.dart -d DEVICE_ID --no-uninstall
-flutter test integration_test/practice_restart_test.dart -d DEVICE_ID --no-uninstall
+open native/AdaptiveWorkout.xcodeproj
 ```
 
-Always keep `--no-uninstall`: Flutter otherwise removes the app and its data. Tests use separate fixture database files and do not delete the production database. After testing, rebuild the regular app with `flutter run --release -d DEVICE_ID`.
+Select the **AdaptiveWorkout** scheme. The app supports **iOS 17+**. The migration was built with Xcode 27 / Swift 6.4, using Swift 6 language mode. Select your Apple development team under Signing & Capabilities when needed. Flutter, Dart, CocoaPods and third-party Swift packages are not required.
 
-The program preview now links to **Log workouts / history**. Manual sessions support persistent drafts, per-set actuals, explicit skips, separate warm-ups, single-arm left/right records, and audited corrections. Actuals require explicit setup and load convention; they never automatically become verified baselines or progression evidence. Storage lives separately from practice data. See ADR 0009 and `docs/TESTING.md` for persistence and physical-device verification boundaries.
+## What works
 
-## Recommendation storage and history
+- Workout logging with the five approved templates, frozen prescriptions, persistent drafts, actuals, skips, warm-ups, corrections, early completion and confirmed deletion.
+- Searchable history, comparable graphs, elapsed workout time and explicit rest timers.
+- System/Light/Dark appearance, native haptics, retained setup forms, equipment and starting-load confirmations, and local gym inventories.
+- Separate SQLite repositories with validation, transactions, audit history, idempotent retries and schema compatibility checks.
+- Standalone Swift catalog, eligibility, progression, warm-up, planning, composition and saved-workout services.
 
-[Day 3 storage](docs/decisions/0013-recommendation-history-storage.md) keeps immutable prescriptions separate from actuals, audits corrections and rejects stale future recommendations. Its progression adapter preserves incomplete/incomparable exposures and excludes practice/manual databases. It uses a separate `recommendations.sqlite` store and has no production generation/UI caller yet. Required catalog reviews remain pending.
+Adaptive generation is still gated by the existing product requirements: reviewed catalog bindings, safety inputs, a production atomic capture/save adapter and live generated-workout integration remain future work. Manual and practice records never become progression evidence. The real three-entry catalog remains disabled.
 
-Validation: 278 unit/widget tests and seven native SQLite tests passed on the authorized iPhone 17 Pro simulator, along with formatting and static analysis. Native tests use only `recommendation_history_fixture.sqlite` and must run with `--no-uninstall`. Simulator reopen and injected rollback checks do not establish physical-device power-loss recovery.
+The owner confirmed the deleted Flutter app contained only test data and chose a fresh native start. The Swift app keeps its own `com.adaptiveworkout.adaptiveWorkout.native` identity. No real-data import or recovery is claimed.
+
+## Development
+
+```sh
+swift test --package-path native/Packages/WorkoutCore
+xcodebuild -project native/AdaptiveWorkout.xcodeproj -scheme AdaptiveWorkout \
+  -configuration Release -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+Use Xcode's Product → Analyze for static analysis. See [Testing](docs/TESTING.md) for formatting and optional, isolated iPhone tests. Final physical-device checking was skipped at the owner's request; successful compilation and local tests do not establish device acceptance.
+
+Code lives in:
+
+- `native/AdaptiveWorkout`: SwiftUI presentation and composition.
+- `native/Packages/WorkoutCore/Sources/WorkoutDomain`: pure models, codecs and deterministic policies.
+- `native/Packages/WorkoutCore/Sources/WorkoutApplication`: controllers and coordinated actions.
+- `native/Packages/WorkoutCore/Sources/WorkoutPersistence`: SQLite adapters and offline catalog mapping.
+- `native/Packages/WorkoutCore/Tests`: local unit, repository and golden parity tests.
+- `native/AdaptiveWorkoutUITests`: isolated screen and restart tests.
+
+Read [AGENTS.md](AGENTS.md), [Architecture](docs/ARCHITECTURE.md), and the relevant approved specification before editing. [Migration evidence](docs/SWIFT_MIGRATION_STATUS.md) and the [behavior map](docs/SWIFT_PARITY_MATRIX.md) record the port and its limits. Historical Flutter code and migration fixture generators remain in Git history; the maintained application is Swift.

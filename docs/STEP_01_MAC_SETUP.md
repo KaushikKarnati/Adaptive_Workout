@@ -1,94 +1,18 @@
-# Step 1 — Mac Repository Setup
+# Mac setup for native iOS development
 
-## Outcome
+The maintained app is Swift/SwiftUI. The original Flutter setup recipe remains in Git history before ADR 0018.
 
-At the end of this step, the Mac can build a stock Flutter application for iOS and Android, Git tracks the project, and the repository contains permanent engineering rules.
+1. Install Xcode and complete its first-launch setup. This migration was checked using Xcode 27.0 and Swift 6.4.
+2. Open `native/AdaptiveWorkout.xcodeproj`, choose **AdaptiveWorkout**, and select your development team if Xcode requests signing configuration.
+3. Build with Product → Build. The deployment target is iOS 17.0.
+4. Run the local package tests from the repository root:
 
-## 1. Install development tools
+   ```sh
+   swift test --package-path native/Packages/WorkoutCore
+   ```
 
-Install and open each application once:
+5. Use [Testing](TESTING.md) for formatting, static analysis, generic iOS builds and optional physical-iPhone checks. No simulator download is required for the build or local package tests.
 
-- Codex desktop app
-- Xcode from the Mac App Store
-- Android Studio
-- VS Code, optional but recommended for inspection
-- GitHub Desktop, optional if terminal Git feels unfamiliar
+The app uses SwiftUI, Foundation, CryptoKit, UIKit and the system SQLite library. Flutter, Dart, Android Studio, CocoaPods and external Swift packages are unnecessary. Do not add a dependency without approval.
 
-Install Homebrew only from its official website if it is not already available.
-
-## 2. Install Flutter
-
-Use Flutter's current official macOS installation instructions. Choose the Apple Silicon download on M-series Macs and the Intel download on Intel Macs. Add Flutter's `bin` directory to the shell PATH.
-
-Then run:
-
-```bash
-flutter doctor -v
-```
-
-Resolve every required iOS and Android item. Optional platform warnings can remain only if that platform is intentionally unsupported.
-
-Typical additional steps include:
-
-```bash
-sudo xcodebuild -runFirstLaunch
-sudo xcodebuild -license
-flutter doctor --android-licenses
-```
-
-Read every command before approving elevated access.
-
-## 3. Create the Flutter shell
-
-From the directory containing this repository, run:
-
-```bash
-flutter create --org com.adaptiveworkout --platforms=ios,android .
-```
-
-The reverse-domain identifier is provisional. Change `com.adaptiveworkout` before store release if a company domain or final brand is selected.
-
-Do not add Riverpod, Drift, RevenueCat, or workout features in this step.
-
-## 4. Validate the generated application
-
-```bash
-dart format --output=none --set-exit-if-changed .
-flutter analyze
-flutter test
-flutter devices
-```
-
-Launch at least one simulator or emulator, then run:
-
-```bash
-flutter run
-```
-
-The stock counter application must build and open before proceeding.
-
-## 5. Initialize and checkpoint Git
-
-If this repository was not already initialized:
-
-```bash
-git init
-git add .
-git commit -m "chore: initialize adaptive workout project"
-```
-
-Create an empty private GitHub repository, then follow GitHub's displayed commands to add the remote and push. Do not commit credentials, provisioning profiles, signing keys, or `.env` files.
-
-## Step 1 acceptance criteria
-
-- `flutter doctor -v` has no unresolved required-platform failures.
-- Stock Flutter app builds and opens on at least one simulator/emulator.
-- `flutter analyze` passes.
-- `flutter test` passes.
-- Git working tree is clean after the initial commit.
-- Private GitHub remote is configured and the commit is pushed.
-- `AGENTS.md` and the files in `docs/` are present.
-
-## Stop point
-
-Do not build the workout engine yet. The next step is completing and approving `docs/PRODUCT.md`, followed by the scientific decision specifications.
+Read [Architecture](ARCHITECTURE.md) and the relevant approved product/science specifications before changing behavior. Never commit credentials, provisioning profiles or signing keys. Android and App Store distribution are separate future work.

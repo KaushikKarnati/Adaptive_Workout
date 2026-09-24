@@ -1,5 +1,7 @@
 # Seven-day implementation tracker
 
+> Historical implementation record. Flutter/Dart paths, commands and acceptance results below refer to the pre-migration source in Git history. The maintained implementation is Swift; see [ADR 0018](decisions/0018-native-swift-migration.md), [Architecture](ARCHITECTURE.md), [Testing](TESTING.md) and the [behavior map](SWIFT_PARITY_MATRIX.md) for current paths and status. Product and training gates remain in force.
+
 Day 1: September 23, 2026. Target: September 29, 2026.
 
 Current forward plan: [seven-day backend completion plan](BACKEND_COMPLETION_PLAN_7_DAYS.md), based on a fresh code/test audit and Fitbod/Gravl product research. It defines the remaining backend work, dependencies and acceptance gates. The original milestone table and dated entries below remain implementation history; later entries supersede earlier pending statuses. The new plan does not approve unresolved training rules or catalog reviews.

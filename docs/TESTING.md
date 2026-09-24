@@ -1,18 +1,154 @@
-# Testing Strategy
+# Native testing strategy
 
-> Scope update approved September 23, 2026: the product owner is the sole initial tester, using an iPhone 17 Pro. The September 29 target is a private offline build; broader supported-iOS compatibility remains required and must be verified separately. Earlier references below to two testers or an invited friend are superseded for this initial phase. Photo evaluation requiring a second evaluator remains unresolved and cannot be claimed complete. For week one, the owner-supplied program replaces the earlier strength-first plan and the old barbell benchmark goals are deferred. The three-month outcome period and existing safety/review gates are unchanged. See [the implementation tracker](IMPLEMENTATION_WEEK_ONE.md).
+The maintained app is Swift/SwiftUI, opened through
+`native/AdaptiveWorkout.xcodeproj` with the **AdaptiveWorkout** scheme. The local
+package is `native/Packages/WorkoutCore`; no Flutter or Dart installation is
+required. [The behavior map](SWIFT_PARITY_MATRIX.md) identifies the native
+counterpart of each reference behavior. [Migration evidence](SWIFT_MIGRATION_STATUS.md)
+records actual commands, results and limitations; a test listed here is not a
+claim that it passed.
 
+The owner asked to skip further physical-device checking at the migration
+checkpoint. Use local native checks for the current work and leave skipped
+installed-app checks explicitly unverified. The owner chose a fresh start with
+the distinct native app identity; storage compatibility does not automatically
+transfer data from the deleted Flutter test app or another sandbox.
 
-## Test layers
+## Native quality workflow
 
-- Domain unit tests for every calculation and decision rule
-- Property and boundary tests for numerical logic
-- Repository and migration tests for persistence
-- Widget tests for important user interactions
-- Integration tests for critical workout flows
-- Deterministic simulations for long-term engine behavior
-- A three-month private device test by both initial testers before any broader beta, followed by supported-device testing before release
-- A TestFlight readiness review covering adherence, strength, aesthetics or body composition, flexibility, reliability and usability, and recommendation safety, with no category omitted
+Run from the repository root with the selected Xcode toolchain:
+
+```sh
+xcrun swift-format lint --strict --recursive native/AdaptiveWorkout native/AdaptiveWorkoutUITests native/Packages/WorkoutCore/Sources native/Packages/WorkoutCore/Tests native/Packages/WorkoutCore/Package.swift
+swift build --build-tests --package-path native/Packages/WorkoutCore
+swift test --package-path native/Packages/WorkoutCore
+xcodebuild -project native/AdaptiveWorkout.xcodeproj -scheme AdaptiveWorkout -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+```
+
+Package tests execute on the Mac. The generic iOS build checks the native app
+against its iOS deployment target without installing or launching it. To compile
+the hosted core and interaction test targets as well, use:
+
+```sh
+xcodebuild -project native/AdaptiveWorkout.xcodeproj -scheme AdaptiveWorkout -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build-for-testing
+```
+
+The package has no downloaded third-party dependencies. Report unavailable
+commands, failures and meaningful warnings accurately. Record the tested
+revision/working-tree state and Xcode/Swift versions; rerun affected checks after
+fixes. Never call a build a test pass, use an older run as proof of later edits,
+or treat failure-injection rollback as physical power-loss recovery.
+
+## Test layers and locations
+
+- `native/Packages/WorkoutCore/Tests/WorkoutCoreTests`: pure domain rules,
+  numerical boundaries, canonical fixtures, application controllers, SQLite
+  migrations, transactional rollback and close/reopen recovery.
+- **AdaptiveWorkoutTests**: the same core test sources hosted by the native iOS
+  app. This target supports later explicit on-device verification.
+- `native/AdaptiveWorkoutUITests`: **WorkoutFlowTests** covers manual
+  start/save/correction, tab state, process restart, early finish, history/graphs,
+  deletion, appearance and saved/unsaved setup. **HistoryNavigationTests** covers
+  retained history search/date filters and per-series graph metric after opening
+  a saved workout. Tests retain screenshots as result attachments.
+- Deterministic simulations remain separate from production rules. A native
+  implementation or synthetic fixture does not count as the three-month outcome
+  study or approval of real prescriptions.
+
+Every algorithmic rule needs normal, boundary, invalid and missing-data cases;
+every bug fix needs a regression case. Unit tests establish contracts, while
+interaction tests establish the exercised UI behavior. Screenshot presence alone
+does not establish visual or accessibility acceptance.
+
+## Storage and fixture isolation
+
+Repositories use temporary databases in core tests. **StorageTimingTests** covers
+fixture-path validation and separation of both databases and preferences. Native
+UI tests use a unique `--fixture-directory NAME`; `--reset-fixture` is used only
+for that fixture's initial launch. The terminate/relaunch phase reuses the same
+name without resetting it. Never uninstall between phases when checking durable
+records. Release builds reject developer fixture/practice arguments, and hosted
+test startup is isolated from production storage.
+
+**ManualRepositoryTests**, **RecommendationRepositoryTests** and
+**SettingsRepositoryTests** cover acknowledged payloads and receipts, revisions,
+profile separation, idempotent retries, rollback, unsupported schemas and
+reopening. **ControllerTests** and **SettingsControllerTests** cover uncertain
+save results, retained pending intent and blocked competing actions. Keep exact
+legacy JSON bytes, integer load values, microseconds, audit history, old program
+versions and deletion tombstones in these assertions.
+
+Practice remains Debug-only through explicit `--practice` injection. Its
+`adaptive_workout.sqlite` records are separate from manual logs and generated
+history and never become progression evidence. No test should clear a normal
+app store to recover from an error. A future transfer of real data needs its own
+protected source backup, sandbox/replacement rehearsal, restore and rollback
+checks.
+
+**EnginePolicyTests**, **EngineCatalogTests**, **WgerSourceMapperTests**,
+**EngineComposerTests**, **EnginePersistedRehearsalTests**,
+**RecommendationHistoryTests** and **SavedWorkoutServiceTests** cover the
+standalone adaptive pipeline. In particular, all five complete composed
+snapshots are compared to frozen Dart output bytes, and the real three-entry
+catalog digest is pinned while all entries remain disabled. Manual/practice
+records and reported setup values must remain excluded from generated progression
+evidence. A service tested with a synthetic atomic source does not establish a
+production cross-store adapter.
+
+Frozen expected bytes live beside the Swift tests and are not regenerated from
+the implementation under test. Raw source snapshots are retained under
+`native/ReferenceFixtures/wger`; attribution and pending reviews are documented
+in [the benchmark source record](catalog/BENCHMARK_CATALOG_2026_09_08.md). See
+[the preservation map](SWIFT_PARITY_MATRIX.md#preserved-reference-evidence) before
+changing a fixture or notice. Removed Dart probes and fixture generators are not
+current test commands; the reference implementation remains in Git history.
+
+## Later installed-app acceptance
+
+Resume these checks only when the owner requests device verification. Select an
+explicit supported physical iPhone in Xcode; configure signing for the native
+bundle and run the hosted and interaction test targets against isolated fixtures.
+Do not silently substitute another destination for the requested device.
+
+Record install/launch, acknowledged save, independent app termination/relaunch,
+resume, correction, finish, history/source navigation and confirmed deletion
+separately from package tests. Check Light/Dark/System appearance, keyboard and
+sheet behavior, long content, and retained fields across tab changes. Confirm
+rest deadlines resume correctly, foreground completion gives at most one cue,
+and hidden/background expiry produces no catch-up haptic. Test the mute
+preference and actual feedback comfort hands-on.
+
+VoiceOver reading/action order, Voice Control names, 200-percent Larger Text,
+Reduce Motion, Differentiate Without Color and exact graph-value access require
+explicit acceptance. Supported-iOS/device coverage, interruption during an
+uncommitted write, physical power loss, backup/file protection and final signed
+release behavior remain separate until documented results exist. The current
+migration does not claim these waived checks passed.
+
+## Product outcome and release gates
+
+The September 23 scope decision made the owner the sole initial tester on an
+iPhone 17 Pro, with a September 29 private offline target. Earlier two-tester
+wording below describes the broader approved protocol; it does not add a second
+person to the current owner phase. Photo evaluation requiring another evaluator
+is unresolved. The owner-supplied week-one program supersedes the earlier
+strength-first plan, and the barbell benchmark goals below are deferred; the
+language migration does not activate them. See [the implementation tracker](IMPLEMENTATION_WEEK_ONE.md).
+
+The three-month outcome period and existing safety/review gates remain in force
+before broader release. Catalog review, qualified review of clinical wording,
+verified equipment/baselines, durable safety inputs, live intake and the production
+atomic cross-store generation adapter are still required for real adaptive
+recommendations. Current manual logging and descriptive graphs do not claim to
+provide those features. HealthKit, cloud sync and Android are outside this
+migration.
+
+Retain the approved broader outcome criteria below for future readiness review;
+they are requirements, not implemented reporting screens or observed results.
+A TestFlight readiness review must cover adherence, strength, aesthetics/body
+composition, flexibility, reliability/usability and recommendation safety without
+omitting a category, followed by supported-device acceptance before release.
+
 - Adherence is calculated for each tester over the full three-month period and must be at least 80% of planned workouts; a carried-forward workout counts only when completed
 - Strength-outcome reporting covers only the approved barbell back squat, flat barbell bench press, and conventional barbell deadlift without combining or silently substituting non-equivalent variants
 - Estimated one-repetition-maximum reporting uses only sets that satisfy the approved eligibility rules and never requires a true maximum attempt
@@ -54,6 +190,7 @@
 - Missing or invalid safety information must return an explicit no-recommendation result
 - Tests and product language must not diagnose injury, prescribe rehabilitation, claim injury prevention, or imply medical clearance; symptom wording and escalation instructions require qualified clinical review before outside testing
 
+
 ## Algorithm test rule
 
 Write expected input/output examples before implementing each rule. Include normal, boundary, invalid, missing-data, unit-conversion, and regression cases.
@@ -82,45 +219,15 @@ For exercise selection, tests must also cover:
 - Catalog contract tests cover every required field, allowed enum, referenced identifier, null-versus-empty rule, length bound, uniqueness constraint, and selectable-state invariant in `EXERCISE_CATALOG.md`
 - Property tests demonstrate that source-only and presentation-only fields cannot change exercise eligibility, ranking inputs, or recommendation output
 - Reordering catalog entries or set-valued identifiers does not change the validated entity set or deterministic recommendation output
-- Canonicalization tests sort entries and set-valued IDs before applying RFC 8785 and verify the expected lowercase SHA-256 digest from fixed fixtures
+- Canonicalization tests sort entries and set-valued IDs, verify the RFC 8785-compatible restricted catalog payload encoding, and check the expected lowercase SHA-256 digest from fixed fixtures
 - Eligibility tests recompute the canonical explicit-constraint digest, reject a supplied mismatch before safety evaluation, and prove that each included constraint field affects the digest while excluded presentation and candidate fields do not
 - Eligibility monotonicity tests prove that adding a hard exclusion cannot make an ineligible candidate eligible, and combined-failure tests retain every applicable reason in canonical order
 - Boundary tests cover every maximum in `EXERCISE_TAXONOMIES.md`, including exact-limit acceptance, one-over rejection, entry-count limits, and decompressed-size limits
 - Wger mapping fixtures cover every source muscle, equipment, category, language, and license ID listed in `WGER_MAPPING.md`; an upstream ID/name mismatch fails import instead of silently remapping
 - A missed workout remains the next recommendation and shifts later workouts forward without changing their order
 - Schedule behavior depends on an explicit requested date and history rather than the wall clock
-- The initial two-person build remains functional without HealthKit authorization or health data
+- The initial owner build remains functional without HealthKit authorization or health data
 
 ## Simulation rule
 
 Simulation code must use seeded randomness, preserve reproducible cases, report distributions rather than only averages, and never silently change production rules.
-
-## Initial quality commands
-
-```bash
-dart format --output=none --set-exit-if-changed .
-flutter analyze
-flutter test
-```
-
-
-## Approved week-one progression policy
-
-`test/domain/progression/load_progression_policy_test.dart` covers the approved increase/hold/reduce examples, exact 5%/10% limits, equipment rounding bounds, missing or invalid set evidence, incomplete/corrected sessions, changed baselines, independent left/right results, profile/slot isolation, duplicate history, deterministic input ordering and explicit gate precedence. These synthetic policy tests do not establish that a real catalog or user is cleared, that history is durable, or that the future application integration cannot bypass validation. Those remain separate integration requirements.
-
-
-## Practice storage acceptance
-
-Pure domain/controller and widget tests cover strict input parsing, unknown RIR, retry after write/read failure, duplicate taps, completion failure and 200% text layout. The iPhone integration tests exercise actual SQLite transactions, correction history, profile isolation, uniqueness, unsupported-schema preservation, failed action-receipt rollback and close/reopen recovery. Run both integration files in README order with `--no-uninstall` to verify acknowledged records after the first app process terminates.
-
-This is practice-only storage, not full real-program logging. A process killed while an uncommitted write is in flight, physical power loss, future forward migrations, device backup/file-protection behavior and VoiceOver interactions remain additional acceptance work. Do not represent injected transaction rollback as a completed physical-power-loss test.
-
-### Physical release restart fallback
-
-On September 23 the six native database tests passed, but the separate restart test's debug harness failed at Flutter/DDS/VM-service communication. For an independent check, build `tool/storage_recovery_probe.dart` in release mode with `--dart-define=STORAGE_PROBE_PHASE=seed`, install without uninstalling, and launch. Copy `Documents/practice_recovery_result.json` from the app container and require `phase=seed, passed=true`. Rebuild with phase `verify`, install without uninstalling, terminate the existing process and launch again. Require `phase=verify, passed=true`, three records and a different process ID. Both phases passed on the physical iPhone. The probe writes only its separate fixture database and result file. Always restore the regular `lib/main.dart` release build afterward. This is committed-write restart recovery; abrupt power loss remains unverified.
-
-### Manual program logging
-
-Run `flutter test integration_test/program_log_repository_test.dart -d <physical-device-id> --no-uninstall -v`. Its four native tests cover receipts/stale actions, correction history, profile isolation, transactional rollback, one-draft uniqueness, unsupported schema/prescription preservation, completion and post-completion corrections. Only `program_logging_fixture.sqlite` is removed.
-
-For full process recovery, build `tool/program_storage_probe.dart` in release mode with `--dart-define=PROGRAM_PROBE_PHASE=seed`, install without uninstalling and launch. Copy `Documents/program_probe_result.json` and require seed/pass. Rebuild with phase `verify`, install and terminate/relaunch. Require verify/pass and a different process ID. The probe exercises only `program_release_probe.sqlite`, never production data. Restore `lib/main.dart` afterward. This tests acknowledged-write recovery, not physical power loss during a transaction.

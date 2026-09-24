@@ -20,7 +20,7 @@ Other locations begin empty too. This is a local inventory, not a shared databas
 
 ## Boundaries
 
-`GymProfiles`, `GymProfile` and `GymEquipment` are immutable pure-Dart records.
+`GymProfiles`, `GymProfile` and `GymEquipment` are immutable Swift domain records.
 `availableCategories` returns only explicitly confirmed available categories in
 stable order. Presence is separate from exact setups, starting loads, catalog
 approval and safety clearance. Existing training setup and workout records are

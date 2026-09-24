@@ -14,7 +14,7 @@ The proposed V1 stores workout and profile information locally and does not requ
 - Validate and safely parse all imports and deep links.
 - Use platform billing through RevenueCat only when subscriptions are introduced.
 - Provide understandable local-data export and deletion controls.
-- Pin and audit dependencies through normal Flutter tooling and CI.
+- Keep native dependencies minimal; audit the local Swift package manifest and Xcode build settings. No remote package is currently required.
 - Document every added network endpoint and transmitted field.
 - Record the provenance, license, version, and integrity information for imported exercise-catalog content.
 - Reject malformed catalog records and unsupported enum or unit values before they reach the domain engine.

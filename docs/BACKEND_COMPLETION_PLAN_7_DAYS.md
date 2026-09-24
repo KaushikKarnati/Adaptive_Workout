@@ -1,5 +1,7 @@
 # Seven-day backend completion plan
 
+> Historical implementation record. Flutter/Dart paths, commands and acceptance results below refer to the pre-migration source in Git history. The maintained implementation is Swift; see [ADR 0018](decisions/0018-native-swift-migration.md), [Architecture](ARCHITECTURE.md), [Testing](TESTING.md) and the [behavior map](SWIFT_PARITY_MATRIX.md) for current paths and status. Product and training gates remain in force.
+
 > September 23 follow-up: [Day-one contracts](programs/DAY_ONE_CONTRACTS_2026_09_23.md) resolve user-controlled scheduling, early-end advancement, target confirmation, Tuesday alternatives and advisory duration. Earlier hard time-budget requirements below are superseded. The pure calendar/duration policies are implemented; full integration and listed review gaps remain pending. The owner has deferred trainer involvement, so Day 2 review availability is no longer an assumed commitment.
 
 Prepared September 23, 2026 after reviewing the repository and running its local checks. Schedule: September 23–29, matching the existing private-build target. If implementation starts later, move the dates together and retain the dependency order.

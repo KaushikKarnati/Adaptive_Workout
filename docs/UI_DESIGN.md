@@ -1,131 +1,181 @@
 # Interface design
 
-The interface uses a restrained blue accent, quiet surfaces, clear typography and generous spacing. The app has two persistent main screens: **Workout** for logging, history and graphs, and **Settings** for appearance, haptics, the approved program, training setup and gym inventory. Settings details expand inline; workout records open within Workout. Small editing and confirmation dialogs do not add destinations. The labeled bottom tab bar keeps both screens available and preserves context, following [Apple HIG: Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars). Practice is hidden from normal navigation; its code and records are preserved for explicit development/test injection. Future screens should extend these patterns using real application state; do not add invented activity, progress, readiness or recommendation metrics.
+The maintained interface is native SwiftUI on iOS 17 and later, with a restrained
+blue accent, semantic system surfaces, clear typography and generous spacing.
+It has two persistent main screens: **Workout** for logging, history and graphs,
+and **Settings** for appearance, haptics, the approved program, training setup and
+gym inventory. Details expand inline; saved workouts open in the existing logger.
+Small editing sheets and confirmation alerts stay local to these destinations.
+The labeled tab bar preserves context, following [Apple HIG: Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars).
+
+`AdaptiveWorkoutApp` composes `HomeView`, `HistoryView`, `SettingsView`, `SetupView`
+and `SetEditor` under `native/AdaptiveWorkout/`. Practice remains hidden during
+normal use; Debug builds can expose it explicitly with `--practice`. Hiding it
+does not delete its separate records. New screens must use actual application
+state, with no invented activity, readiness, progress or recommendation metrics.
 
 ## Appearance
 
-`AppTheme` in `lib/ui/app_theme.dart` defines both appearances. Screens consume semantic `Theme.of(context).colorScheme` roles and shared text styles instead of hardcoded foreground/background colors. Use `primary` for important actions, `onSurface` for primary content, `onSurfaceVariant` for supporting text and error roles for actionable failures. Preserve readable foreground/background pairs in both appearances; convey status with words or symbols as well as color.
+Use SwiftUI semantic colors and standard system fonts, including Dynamic Type.
+Primary text uses the primary role and supporting text uses secondary styling;
+errors and confirmations must remain understandable through text, not color
+alone. Native forms, pickers, toggles, disclosures and sheets provide the platform
+interaction model. This migration does not require a custom imitation of another
+Apple interface style.
 
-System is the default and follows device appearance changes. Optional Light and Dark overrides implement the owner's explicit request. Apple generally recommends following the system without a separate app switch; this intentional exception keeps System first and explains the override. See [Apple HIG: Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode).
-
-The preference is local to this device. `AppearanceController` accesses the pure `AppearancePreferencesRepository` contract; `SqliteAppearanceRepository` stores one validated enum value in the separate `appearance.sqlite` database. The controller applies a selection after a successful save and surfaces load/save failures. Appearance does not change workout, setup or recommendation records.
+System is the default and follows device appearance changes. Light and Dark are
+intentional owner-requested overrides through `preferredColorScheme`. See
+[Apple HIG: Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode).
+`AppModel` applies a choice after `SqliteAppearanceRepository` saves and reloads
+the validated enum in the separate schema-1 `appearance.sqlite` store. Failed
+loads/saves show an error. Appearance never changes workout, setup or
+recommendation data.
 
 ## Type, layout and interaction
 
-- Use the platform default font, including the iOS system typeface, without bundling fonts. Shared styles establish the hierarchy: 34-point page titles, 22-point section titles and 17-point primary body text. Preserve text scaling and allow important labels and explanations to wrap. See [Apple HIG: Typography](https://developer.apple.com/design/human-interface-guidelines/typography).
-- Keep interactive hit regions at least 44 × 44 logical points, with space between independent actions. Shared filled buttons are at least 52 points high, and icon/text buttons at least 48 points high. Provide descriptive labels, tooltips for icon-only actions and visible selected/error states. See [Apple HIG: Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons).
-- Let screens own safe areas, scrolling and page padding. `AppContent` only centers content and caps its width at 680 logical points. Use roughly 20–24 points of page/card padding, and avoid fixed text heights or horizontal layouts that cannot reflow.
-- Reuse `AppPageHeader`, `AppSectionHeader` and `AppNotice` from `lib/ui/app_components.dart`. Headers already include spacing and heading semantics. Cards group related content; one prominent action establishes each screen's priority. Secondary details can use disclosure controls.
-- Retain standard Flutter control interaction, focus and semantic behavior. Current Material controls are adapted with shared colors, shapes and typography; iOS navigation uses Cupertino transitions. This is not a native Liquid Glass implementation.
+- Use semantic system font styles and allow important labels and explanations to
+  wrap. Do not disable Dynamic Type to make a layout fit. See
+  [Apple HIG: Typography](https://developer.apple.com/design/human-interface-guidelines/typography).
+- Keep independent interactive targets at least 44 × 44 points and visibly
+  separated. Give icon-only actions accessible names and show selected, disabled,
+  error and pending states. See [Apple HIG: Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons).
+- Respect safe areas, keyboard presentation and scrolling. Avoid fixed text
+  heights and horizontal rows that cannot reflow at large text sizes.
+- Group related content with sections and disclosures. Use a clear primary
+  action; ordinary navigation, cancellation and editing should remain reversible.
+- Retain standard SwiftUI focus, selection and accessibility behavior. Buttons
+  embedded together in a Form row need an explicit style so one tap cannot trigger
+  several row actions.
+- Keep workout state and unfinished settings fields across tab/disclosure changes.
+  Opening or canceling a picker/sheet must not save. Pending writes retain their
+  exact action identity, block competing changes and offer a safe retry. Gym
+  compare-and-save conflicts additionally expose an explicit reload of saved data.
 
-Review future screens at narrow widths, large text sizes, both appearances and with VoiceOver. Check contrast, focus order, selected-state announcements, keyboard access and access to all actions; appearance alone is not an accessibility certification. Reference: [Apple HIG: Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility).
+Review narrow layouts, large text, both appearances, keyboard access and VoiceOver
+focus/selected-state announcements. Visual similarity or a screenshot alone is
+not accessibility acceptance. See [Apple HIG: Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility).
 
 ## Haptic feedback
 
-Use short, semantic system patterns following [Apple HIG: Playing haptics](https://developer.apple.com/design/human-interface-guidelines/playing-haptics). `AppHaptics` is presentation-only and sits above navigation so dialogs share the same preference. An iOS method channel invokes UIKit's selection, light impact and notification feedback generators; no custom vibration, audio or new dependency is used.
+Use short semantic system patterns following [Apple HIG: Playing haptics](https://developer.apple.com/design/human-interface-guidelines/playing-haptics).
+`AppModel.cue` directly invokes UIKit selection, light impact and notification
+feedback generators. There is no Flutter method channel, custom vibration,
+audio requirement or haptic dependency in domain/storage code.
 
-- Selection: changed primary tabs, Log/History mode, history/graph filters and metrics, appearance, training-day/exclusion choices and equipment/set selectors, acknowledged gym selection, and clearing a rest timer.
-- Light impact: a new workout successfully created and reloaded, or explicitly starting a rest countdown.
-- Success: acknowledged set/correction, setup/preferences, gym edits, completed workout or deletion, and a rest countdown completing while its screen is visible and the app is active.
-- Warning: destructive/early-finish confirmation and a newly selected pain-affected status.
-- Error: invalid submission or failed initiated save. Retrying uses the final acknowledged outcome, never the original tap.
+- Selection: a changed tab, Log/History mode, history/graph filter or metric,
+  appearance, training-day/exclusion choice or equipment/set selector;
+  acknowledged gym selection; clearing a rest timer.
+- Light impact: an acknowledged new workout, or explicitly starting a rest
+  countdown.
+- Success: acknowledged set/correction, setup/preferences, gym edit, completion or
+  deletion; a rest countdown completing while visible and foregrounded.
+- Warning: destructive/early-finish confirmation and a newly selected pain status.
+- Error: invalid submission or failed initiated save. Retry feedback follows the
+  acknowledged outcome rather than the initial tap.
 
-Loading, ordinary record navigation, typing, scrolling, canceling and reselecting the current value stay quiet. Primary tab and mode changes use a single selection cue; no blanket tap vibration is attached to screens. Do not attach haptics to build methods or general controller listeners. Feedback failures never block an action, and visual confirmations/errors remain the source of truth.
+Loading, ordinary record navigation, typing, scrolling, canceling and reselecting
+the same value stay quiet. Emit cues on explicit interactions and acknowledged
+actions, never in view rendering or a general state-change listener. Feedback
+failure cannot block an action; visible results and errors remain authoritative.
 
-The **Haptic feedback** switch under **Appearance & feedback** is on by default and saved in device-local UserDefaults. Muting it suppresses app cues; the switch itself uses controlled feedback rather than an adaptive control that emits an extra independent vibration. The native bridge also checks mute and foreground state before playing. UIKit determines whether hardware/system settings permit a cue. Unsupported platforms stay quiet. `PrivacyInfo.xcprivacy` declares app-only UserDefaults usage (`CA92.1`); no workout information enters this preference.
+The **Haptic feedback** setting is on by default and retains the UserDefaults key
+`adaptiveWorkout.hapticsEnabled`. App cues require both an enabled preference and
+an active application. Muting suppresses app-requested feedback. UIKit and the
+user's system settings determine hardware availability. `PrivacyInfo.xcprivacy`
+declares app-only UserDefaults usage (`CA92.1`); no workout values are placed in
+this preference. Tests can verify requested cues, gating and preference behavior;
+perceived strength and comfort require a separate hands-on check.
 
-Widget tests cover muted/unsupported states, native failures, changed-vs-unchanged selection, delayed save acknowledgement, safe retries, and no independent switch vibration on iOS. `integration_test/haptics_test.dart` checks the native channel, preference reread, semantic requests and invalid arguments on the physical iPhone, restoring the previous preference. These checks verify requests and state; perceived strength and comfort require the user's physical assessment.
+## Program and setup presentation
 
-Haptics follow-up validation on September 24: all 360 local tests, formatting, static analysis, and the native haptics integration test passed. The signed release build also passed. A separate attempt to refresh the appearance screenshots stalled after device launch while connecting to the debugger; it was stopped with no tests run. The earlier appearance captures remain the visual evidence for the design pass; the new feedback section has narrow-screen/large-text widget coverage.
+The program preview preserves frozen prescriptions, session order, working-set
+counts, repetitions, 2–3 RIR, paired rounds and rest scope. Superset rests follow
+both exercises; unilateral rests follow both sides. Original weekday labels are
+labels, not an automatic schedule. Thursday recovery remains no lifting, easy
+walking, optional light mobility and the supplied 8,000–10,000 total-step target.
+Approved alternative preferences and the disabled optional finisher must remain
+visible without implying that an unverified variation is ready to execute.
+
+Training setup saves explicit weekdays/duration, exclusions, draft or confirmed
+physical equipment, exact available load settings and explicitly confirmed
+starting loads. Missing capability/limitation assessments stay unknown. Equipment
+revision changes can make old starting loads stale. User-reported work and
+rehearsal attestations remain distinct from verified baselines; their append-only
+storage API does not constitute a new live intake screen. Gym availability is a
+location observation, not catalog approval, safety clearance or a starting-weight
+recommendation. See [Gym profiles](GYM_PROFILES.md).
 
 ## Product boundaries
 
-Display approved prescriptions and explain unavailable capabilities honestly. UI changes must not enable catalog entries, bypass setup or safety gates, calculate workout rules in widgets, or imply that manual/practice records are progression evidence. Preserve confirmations, pending-write locks, retry behavior and success acknowledgements owned by the existing controllers.
-
-## Validation
-
-Verified September 24, 2026:
-
-- Formatting and static analysis pass. The full local suite passes, including home navigation, approved content, 320–390-point layouts at 2× text, both appearances, primary/appearance touch targets, system switching, persistence-controller retries and semantic text/action contrast of at least 4.5:1.
-- `integration_test/appearance_test.dart` passed on the physical iPhone. All three preferences survive native SQLite close/reopen. UI rendering uses isolated in-memory workout/setup fixtures and does not touch production workout records.
-- Twelve physical-iPhone captures were visually reviewed: home, appearance, program, setup, log and active session in both Light and Dark. Optional captures use `--dart-define=CAPTURE_UI=true` and write `tmp/ui-review-<screen>-<appearance>.png` inside the test app container.
-- The signed regular release app was rebuilt, installed without uninstalling and launched on the physical iPhone after testing.
-- Complete VoiceOver acceptance, all accessibility text sizes and broader device/OS compatibility remain unverified. Database reopen is tested; it is not a physical power-loss test.
-
-For device validation run `flutter test integration_test/appearance_test.dart -d <physical-device-id> --no-uninstall`, then restore the regular release app. Only the separate `appearance_test_fixture.sqlite` is deleted by this test.
+Display approved prescriptions and unavailable capabilities honestly. Views must
+not calculate workout-generation/progression rules, enable catalog entries,
+bypass safety/setup gates or treat manual/practice records as progression
+evidence. Preserve explicit confirmations, pending-write locks, retries,
+corrections, early-finish semantics and acknowledged deletion. A native interface
+does not activate the standalone generated-workout backend.
 
 ## Session timers
 
-Manual workouts show a pinned elapsed-time bar, measured from their saved start
-until the saved completion (including early completion). Breaks, background time
-and time away from the app are included; this is elapsed time, not active exercise
-time. Reopening restores it from existing timestamps, with no schema change.
-Negative elapsed time after a device-clock change is displayed as zero.
+Manual workouts show elapsed time from the saved start to the saved completion,
+including early completion. Breaks, background time and time away are included;
+this is elapsed time, not active exercise time. Reopening restores it from stored
+timestamps with no schema change. Negative elapsed time after a clock change
+displays as zero.
 
 Each block offers an explicit countdown using its saved prescription's rest.
-For supersets start it after both exercises; for per-side work after both sides.
-Starting another countdown replaces the previous one. The countdown rounds up
-remaining seconds, catches up on foreground resume, and shows “Rest complete” at
-zero. It does not automatically start, advance sets, or authorize continuing.
-Clear rest, disposing the workout screen, app termination, switching workouts and
-successful completion clear the countdown. Switching between the two primary tabs
-or viewing history retains its deadline. A visible foreground completion cues once;
-a countdown that elapsed while hidden/backgrounded stays silent on return. No background alarm or notification
-is scheduled. Timer display and controls use no new dependency or workout writes.
+For supersets, start it after both exercises; for unilateral work, after both
+sides. Starting a new countdown replaces the old one. It rounds remaining seconds
+up, catches up when the app resumes and displays “Rest complete” at zero. It does
+not automatically start, advance sets or authorize continuing.
+
+Clear rest, workout changes, successful completion, screen disposal and app
+termination clear the in-memory countdown. Switching tabs or viewing history
+retains its deadline. A visible foreground completion cues once. A countdown
+that elapsed while hidden or backgrounded stays silent on return. No background
+alarm or notification is scheduled. Timer controls do not write workouts or
+participate in deterministic training rules.
 
 ## History and graphs
 
-Workout contains inline History and Graphs, with a shared search and rolling
+Workout contains inline History and Graphs with a shared search and rolling
 30/90/365-day or all-time filter. History groups finished manual sessions by local
 start date, newest first, and opens a saved record within the same Workout screen.
-Reopening history reloads the repository so corrections and deletions update both
-views while preserving its filters and scroll position.
-Drafts and practice records are excluded. Early finishes remain clearly labeled.
+Returning to history reloads repository data after corrections/deletions while
+retaining filters and navigation context. Drafts and practice are excluded; early
+finishes remain labeled.
 
-Graphs display individual recorded working sets, oldest to newest, with load/reps
-selection and an expandable exact-value list that opens the source workout.
-The horizontal axis is set order, not elapsed time. Only positive-repetition sets
-explicitly marked valid are plotted; warm-ups, skips, unknown/invalid/pain entries
-and missing values are excluded. Series stay separate by program version,
-template slot, variant, exact setup, load convention and side. Bodyweight shows
-reps; assistance is labeled as support, never strength gained. No estimated 1RM,
-volume, readiness or recommendations are calculated. Zero load is supported;
-one-point/constant series and empty/error states are explicit. Search matches
-workout titles, prescribed exercise names, recorded variants and setups.
+Graphs show individual recorded working sets, oldest to newest, with load/reps
+selection and an expandable exact-value list linked to the source workout. The
+horizontal axis is set order, not elapsed time. Include only positive-repetition
+sets explicitly marked valid; exclude warm-ups, skips, unknown/invalid/pain
+records and missing values. Partition series by program version, template slot,
+variant, exact setup, load convention and side. Bodyweight shows reps; assistance
+is labeled as support, never strength gained. No estimated 1RM, volume, readiness
+or recommendation metric is introduced. Support zero loads, one-point/constant
+series and clear empty/error states. Search includes workout titles, prescribed
+exercise names, recorded variants and setup labels.
 
-Reference: https://github.com/brandonp2412/Flexify (reviewed September 24, 2026),
-particularly history_page, history_list, graphs_page and strength_page. Adapted
-interaction concepts: searchable date grouping, exercise graph cards, metric
-selection and history drill-down. Implementation is written for this app's
-repository/controller and theme; no Flexify database, chart package, assets or
-training algorithms are imported. Upstream MIT notice is retained in
-`docs/references/FLEXIFY_LICENSE.md` for provenance.
+The earlier interaction reference was [Flexify](https://github.com/brandonp2412/Flexify),
+reviewed September 24, 2026, for searchable history, exercise graphs, metric
+selection and source-workout navigation. This app's implementation uses its own
+models, repositories and SwiftUI presentation; it includes no Flexify database,
+chart package, assets or training algorithms. The upstream MIT notice is retained
+in [the reference license](references/FLEXIFY_LICENSE.md).
 
-History/graphs validation on September 24: formatting, static analysis and all
-382 local tests passed. Tests cover profile/date/search filtering, graph data
-exclusions, correction replacement, distinct setup/side/load-convention series,
-source-workout navigation, read retry and 320-point layouts at 2x text in both
-themes. Synthetic history and graph screenshots were rendered and reviewed in
-Light and Dark (`CAPTURE_HISTORY=true`, macOS font fixture). The signed release
-build was installed without uninstalling and launched on the physical iPhone;
-the running app process was confirmed. Interactive graph behavior on the phone
-and VoiceOver acceptance remain unverified.
+## Verification and historical evidence
 
-## Two-screen consolidation validation
+Current commands are in [Repository instructions](../AGENTS.md). Native package,
+hosted iOS and interaction tests are separate scopes; use isolated fixture stores
+and never reset production databases. Record actual build/test results, visual
+checks and unresolved limitations in [Migration evidence](SWIFT_MIGRATION_STATUS.md).
+The owner has deferred further physical-device checking at this migration
+checkpoint. This document makes no final native test, VoiceOver, haptic-comfort,
+installed-data transfer or device-acceptance claim.
 
-September 24, 2026: the app now exposes only Workout and Settings as primary
-screens. All 395 local tests, formatting and static analysis pass. Regression
-coverage includes retained workouts and unsaved setup fields across tab/disclosure
-changes, inline history corrections, pending-write locks, changed-only and muted
-feedback, gym save acknowledgements, and once-only foreground rest completion.
-
-The native haptics integration test and both appearance integration tests passed
-on the physical iPhone. Appearance captures use isolated workout/setup fixtures;
-production workout records are not read or changed by these UI tests. Six local
-captures cover Workout, Settings and its expanded appearance section in both
-modes. Four fresh physical-iPhone captures of the two main screens were also
-reviewed in Light and Dark. Screenshots are under ignored `build/ui-review/`.
-Perceived haptic strength/comfort and full VoiceOver acceptance remain hands-on
-checks; automated success verifies semantic requests and preference behavior.
-The signed regular release build was then installed without uninstalling and
-launched successfully; its running iPhone process was confirmed.
+Historical September 24 Flutter validation included successive 360/382/395-test
+suites, separate appearance/haptics iPhone checks and light/dark screenshot
+reviews. Those counts and captures belong to the previous implementation, whose
+source and detailed evidence remain in Git history and the existing ADRs. They
+are useful reference material, not proof that the native replacement passed the
+same checks. Database reopen tests are not physical power-loss tests, and one
+phone cannot establish coverage across every supported iOS version or device.
