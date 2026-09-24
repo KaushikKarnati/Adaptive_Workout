@@ -22,16 +22,16 @@ The broader engine in the architecture—arbitrary program generation, muscle re
 
 | Area | Current evidence | Remaining work |
 | --- | --- | --- |
-| Safety and structural eligibility | Guarded [evaluator](../lib/domain/exercises/eligibility/exercise_eligibility_evaluator.dart) and deterministic tests exist. | Connect fresh verified inputs and reviewed real entries through the public evaluator. |
-| Progression | [LoadProgressionPolicy](../lib/domain/progression/load_progression_policy.dart) implements approved P4–P6/P9 with reasons and evidence IDs. | Supply complete durable history and derive its gate from current eligibility. |
-| Warm-ups | [WarmupPolicy](../lib/domain/workout/warmup_policy.dart) implements approved external-load targets. | Execute the safety checks, count full duration, resolve bodyweight/assisted rehearsal. |
-| Program | [owner_program.dart](../lib/domain/workout/owner_program.dart) contains the five approved templates. | Bind template slots to reviewed catalog variations and verified setups. |
+| Safety and structural eligibility | Guarded evaluator (`lib/domain/exercises/eligibility/exercise_eligibility_evaluator.dart` in the reference commit) and deterministic tests exist. | Connect fresh verified inputs and reviewed real entries through the public evaluator. |
+| Progression | LoadProgressionPolicy (`lib/domain/progression/load_progression_policy.dart` in the reference commit) implements approved P4–P6/P9 with reasons and evidence IDs. | Supply complete durable history and derive its gate from current eligibility. |
+| Warm-ups | WarmupPolicy (`lib/domain/workout/warmup_policy.dart` in the reference commit) implements approved external-load targets. | Execute the safety checks, count full duration, resolve bodyweight/assisted rehearsal. |
+| Program | owner_program.dart (`lib/domain/workout/owner_program.dart` in the reference commit) contains the five approved templates. | Bind template slots to reviewed catalog variations and verified setups. |
 | Catalog | Only [three disabled barbell benchmarks](catalog/BENCHMARK_CATALOG_2026_09_08.md) are source-pinned. They do not cover this program. | Build and review the actual program catalog; publish a new immutable version. |
-| Logging | [Practice](../lib/data/repositories/sqlite_practice_repository.dart) and [manual program](../lib/data/repositories/sqlite_program_log_repository.dart) repositories provide transactions, receipts, revisions, drafts and history. | Extend for recommendation-linked sessions; preserve existing databases and records. |
-| Training evidence | [ProgramLog](../lib/domain/logging/program_log.dart) explicitly returns `recommendationEligible=false`. | Add a separate validated evidence path. Do not automatically promote manual or practice records. |
+| Logging | Practice (`lib/data/repositories/sqlite_practice_repository.dart` in the reference commit) and manual program (`lib/data/repositories/sqlite_program_log_repository.dart` in the reference commit) repositories provide transactions, receipts, revisions, drafts and history. | Extend for recommendation-linked sessions; preserve existing databases and records. |
+| Training evidence | ProgramLog (`lib/domain/logging/program_log.dart` in the reference commit) explicitly returns `recommendationEligible=false`. | Add a separate validated evidence path. Do not automatically promote manual or practice records. |
 | Profile and baselines | Controllers use a local owner ID; manual setup labels are not verification records. | Persist versioned profile, equipment, capability, constraint and exact-setup baseline verification. |
 | History compatibility | Readers require the current program version and prescription; schema upgrades currently refuse to open. | Historical readers and transactional forward migration fixtures before version changes. |
-| Application | [main.dart](../lib/main.dart) opens the practice flow; the engine policies have no application callers. | Add application orchestration and a minimal real-session entry point. |
+| Application | main.dart (`lib/main.dart` in the reference commit) opens the practice flow; the engine policies have no application callers. | Add application orchestration and a minimal real-session entry point. |
 | Lifecycle/privacy | No complete scheduling, abandonment, export or local deletion service exists. | Resolve the contracts and implement them with recovery tests. |
 
 The existing logging foundation should be extended, not rebuilt. Earlier tracker rows saying that storage or signing is still pending are historical; later entries record manual storage and physical installation results. README/current-status text also needs reconciliation.

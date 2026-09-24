@@ -21,9 +21,23 @@ The maintained app is native Swift/SwiftUI at `native/AdaptiveWorkout.xcodeproj`
 
 ## Local native verification
 
-The complete final command results will be recorded after the clean-checkout pass. Intermediate local Swift package suites passed 111 and then 112 tests. The later suite includes exact fixture-name validation; additional final regression tests cover independent appearance failure and inspectable pending saves.
+Final executable source: `37711e3` (later commits update documentation only). A clean archive of that commit contained no Dart source or Flutter manifest. Both clean checks ran with `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, excluding the installed Flutter SDK.
 
-An intermediate unsigned generic-iOS Release build passed. Native source is formatted using Xcode's bundled `swift-format`. No third-party runtime or build dependency was added.
+| Check | Result |
+| --- | --- |
+| `xcrun swift-format lint --strict --recursive` over maintained Swift source/tests and Package.swift | Passed; no formatting diagnostics |
+| `swift test --package-path native/Packages/WorkoutCore` in the clean checkout | **115 tests passed, zero failures**, 13.8 seconds |
+| `xcodebuild ... -configuration Debug -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build-for-testing` | Passed; app, hosted core tests and UI tests compiled without launching a device |
+| `xcodebuild ... analyze` | Passed |
+| `xcodebuild ... -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` in the clean checkout | Passed |
+| Retained raw wger files compared to the original fixture bytes | Exact match |
+| `git diff --check` and maintained documentation link checks | Passed |
+
+Clean-checkout logs are `/tmp/adaptive-native-clean-core.log` and `/tmp/adaptive-native-clean-release.log`; final Debug/test compilation and analysis log is `/tmp/adaptive-native-final-debug.log`. These local temporary logs are not committed or guaranteed to persist. Full reproducible command forms are in [Testing](TESTING.md).
+
+Xcode reports one tooling warning category: **AppIntents metadata extraction skipped, no AppIntents.framework dependency found**. This app does not implement App Intents; no additional framework was added to suppress the message. No Swift compiler or analyzer warning remains.
+
+The final regression cases include invalid UTF-8 storage refusal, fixture/preferences isolation and strict fixture names, finite/extreme timer inputs, exact save acknowledgement, inspectable pending values, and appearance failure leaving workout storage usable. No third-party runtime or build dependency was added.
 
 ## Earlier iPhone evidence, before checks were deferred
 
