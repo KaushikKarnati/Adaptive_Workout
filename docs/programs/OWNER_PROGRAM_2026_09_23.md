@@ -1,5 +1,7 @@
 # Owner-supplied five-session program — September 23, 2026
 
+> Follow-up decisions: [Day-one contracts](DAY_ONE_CONTRACTS_2026_09_23.md) approve user-selected schedule/duration, early-end advancement, explicit target confirmation and Tuesday's lying-curl alternative. The program was created with ChatGPT and adopted by the owner; no independent trainer review is recorded. Historical v1 prescriptions remain unchanged until versioned readers and bindings are implemented.
+
 Status: supplied by the owner in response to the request for a reviewed program. The tables transcribe the supplied prescription; missing fields and alternatives remain unresolved. This is not yet an executable rule set or approval of catalog records. Reviewer identity and supporting evidence have not been recorded.
 
 ## Approved amendments

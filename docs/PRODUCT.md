@@ -1,5 +1,7 @@
 # Product Specification
 
+> September 23 follow-up: [Day-one contracts](programs/DAY_ONE_CONTRACTS_2026_09_23.md) supersede the fixed weekday and 45–60-minute requirements below. Schedule and duration are user preferences; explicitly ended partial sessions advance. Program provenance is ChatGPT-created and owner-tested, with trainer review deferred. Existing catalog/safety gates remain unresolved.
+
 > Scope update approved September 23, 2026: the product owner is the sole initial tester, using an iPhone 17 Pro. The September 29 target is a private offline build; broader supported-iOS compatibility remains required and must be verified separately. Earlier references below to two testers or an invited friend are superseded for this initial phase. Photo evaluation requiring a second evaluator remains unresolved and cannot be claimed complete. For week one, the owner-supplied program replaces the earlier strength-first plan and the old barbell benchmark goals are deferred. The three-month outcome period and existing safety/review gates are unchanged. See [the implementation tracker](IMPLEMENTATION_WEEK_ONE.md).
 
 

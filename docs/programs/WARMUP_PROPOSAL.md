@@ -1,6 +1,10 @@
 # Warm-up proposal — September 23, 2026
 
+> Follow-up decisions: [Day-one contracts](DAY_ONE_CONTRACTS_2026_09_23.md) approve user-selected schedule/duration, early-end advancement, explicit target confirmation and Tuesday's lying-curl alternative. The program was created with ChatGPT and adopted by the owner; no independent trainer review is recorded. Historical v1 prescriptions remain unchanged until versioned readers and bindings are implemented.
+
 Status: APPROVED September 23, 2026. The owner approved the draft and explicitly retained blocking for unresolved setups. Version: `owner-warmup-v1`.
+
+New research requested by the owner is recorded in [the evidence review and proposed v2 rules](../research/WARMUP_REVIEW_2026_09_23.md). The owner approved W1–W7 as `owner-warmup-v2`. It retains these external-load defaults and supersedes the unresolved bodyweight-policy gap below; exact setup verification and catalog/application integration remain pending. This file preserves the historical v1 contract.
 
 ## Evidence and limits
 
@@ -19,6 +23,10 @@ A [randomized crossover study of 15 men](https://pubmed.ncbi.nlm.nih.gov/2515374
 7. Preserve all prescribed working sets and rest. Count walking, rehearsal reps, rest and equipment transitions in duration; do not promise a 45–60-minute fit until the timing model is checked. Existing casual stretching is optional personal activity, not a substitute for the defined rehearsal sets.
 
 ## Exercise-specific application
+
+Owner follow-up: current preparation for pull-ups, hanging knee raises and ab-wheel rollouts is basic stretching followed by the exercise, without a specific rehearsal routine. This self-report does not replace the approved external-load warm-ups or resolve item 5. Exact stretching details and movement setups remain unspecified.
+
+Subsequent setup details: the owner reports 2 × 10 unassisted pull-ups followed by 1 × 10 machine-assisted pull-ups, recalling approximately 70 lb of displayed assistance, and kneeling ab-wheel rollouts. The owner confirmed supported knee raises with forearms on pads and a rounded back cushion (captain's-chair setup), rather than the hanging variation in the original template. Exact machine identities, assistance setting/increments and reviewed catalog bindings remain unverified. These are working-exercise observations, not reviewed rehearsal prescriptions. The mixed pull-up setup needs a separate per-set contract before generation; see [Day-one contracts](DAY_ONE_CONTRACTS_2026_09_23.md).
 
 | Session | First external-load exercise receiving two rehearsal sets |
 | --- | --- |

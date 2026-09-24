@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/workout/owner_program.dart';
 import 'program_logging_page.dart';
+import '../setup/training_setup_page.dart';
 
 class ProgramPage extends StatelessWidget {
   const ProgramPage({super.key});
@@ -20,6 +21,14 @@ class ProgramPage extends StatelessWidget {
               ),
             ),
             child: const Text('Log workouts / history'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TrainingSetupPage(),
+              ),
+            ),
+            child: const Text('Training setup / starting loads'),
           ),
           const Text(
             'Approved plan · Preview',

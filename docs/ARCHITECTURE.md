@@ -116,7 +116,7 @@ Each material decision should be recorded in `docs/decisions/` before implementa
 
 ## Warm-up target boundary
 
-`WarmupPolicy` calculates approved rehearsal-set targets from a matching verified baseline, explicit current gate and available settings. Missing/infeasible or bodyweight/assisted inputs return setup-required. It does not control live exercise execution. The five-minute walking requirement is applied once by future session composition. See [ADR 0008](decisions/0008-approved-warmup-policy.md).
+`WarmupPolicy` calculates approved rehearsal-set targets from a matching verified baseline, explicit current gate and available settings. Its historical v1 entry point keeps missing/infeasible or bodyweight/assisted inputs blocked. Approved v2 bodyweight targets now use `BodyweightWarmupPolicy`, with separate assistance and verified range references. `externalWarmupV2` preserves the v1 external calculation; `evaluateWarmupContinuation` checks explicit feedback, rest, interruption and current gate without reading a clock. These standalone policies remain unconnected to storage/UI; see [ADR 0011](decisions/0011-approved-warmup-v2.md). It does not control live exercise execution. The five-minute walking requirement is applied once by future session composition. See [ADR 0008](decisions/0008-approved-warmup-policy.md).
 
 
 ## Durable practice logging
@@ -130,3 +130,17 @@ Production composition opens `SqlitePracticeRepository` and injects its pure-Dar
 ## Manual program logging
 
 `ProgramLog` validates actual records and completion separately from constant prescriptions; it explicitly reports `recommendationEligible=false`. `ProgramLogController` owns pending actions and retry identity, and `SqliteProgramLogRepository` owns transactional persistence in a separate database. The program screen offers manual logging and history. Each stored session has a prescription snapshot; reads reject a mismatch with the pinned program version. No catalog entries are enabled and no manual actual automatically becomes a verified baseline. See ADR 0009 for the bounded storage extension.
+
+## User-controlled calendar planning
+
+### Local setup preparation
+
+`TrainingSetupPage` delegates preferences, equipment drafts and explicit starting-load confirmations to `TrainingSetupController`, through the pure `TrainingSetupRepository` interface. `SqliteTrainingSetupRepository` stores versioned aggregates and atomic action receipts in a separate local database. Equipment revision changes make prior starting loads stale. Preparation variation keys are not approved catalog identities; these records do not enable recommendations. See [ADR 0012](decisions/0012-verified-training-setup-storage.md). The owner selected Monday–Friday and 60 minutes and will verify equipment gradually; these are owner preferences, not global defaults.
+
+`SessionPlanningPolicy` independently maps an explicit ordered program, user-selected weekdays, scoped occurrence history and requested civil date to a next slot/date or resumable draft. Completed and explicitly ended-early occurrences advance; missed days do not. It does not determine exercise eligibility, recovery or load. `compareSessionDuration` reports an advisory comparison to a positive user preference, without enforcing a 45–60-minute limit or estimating durations. Both are standalone pure policies, not yet wired to storage or the app. [Day-one contracts](programs/DAY_ONE_CONTRACTS_2026_09_23.md) define the forthcoming immutable records, target-confirmation boundary and catalog review packet.
+
+## Recommendation-linked storage and progression history
+
+`RecommendationSnapshot` owns schema-1 self-contained ordered targets and immutable version/input/evidence references. Historical reads use that snapshot, never the current `ownerProgram` constant. `GeneratedOccurrence` validates actuals against exact saved targets and permits one audited set mutation or terminal transition at a time. `GeneratedHistory` validates a complete profile envelope and provides progression exposures without dropping incomplete or incomparable occurrences. Stable program IDs scope history across program versions; version changes break comparability.
+
+`SqliteRecommendationHistoryRepository` implements the pure repository interface in a separate `recommendations.sqlite` store. Each mutation commits current state, prior revision, history revision and action receipt atomically. Reads validate relational identities, complete sequence and the audit chain. An older history revision invalidates unstarted recommendations while preserving active/historical prescriptions. Practice/manual data are never read by this adapter. There is no production composer/UI caller yet; storage does not approve a catalog or clear safety gates. Fresh cross-store input capture and eligibility checks belong to upcoming orchestration. See [ADR 0013](decisions/0013-recommendation-history-storage.md).

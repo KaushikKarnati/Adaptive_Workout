@@ -2,6 +2,8 @@
 
 Day 1: September 23, 2026. Target: September 29, 2026.
 
+Current forward plan: [seven-day backend completion plan](BACKEND_COMPLETION_PLAN_7_DAYS.md), based on a fresh code/test audit and Fitbod/Gravl product research. It defines the remaining backend work, dependencies and acceptance gates. The original milestone table and dated entries below remain implementation history; later entries supersede earlier pending statuses. The new plan does not approve unresolved training rules or catalog reviews.
+
 ## Confirmed scope
 
 - One initial tester: the product owner on an iPhone 17 Pro.
@@ -129,3 +131,25 @@ Validation: 222 local tests pass; format passes (47 files, no changes); analysis
 Still pending: owner acceptance of real manual logging; physical airplane-mode and VoiceOver checks; verified catalog/equipment/baseline onboarding; warm-up execution and bodyweight gaps; recommendation orchestration; schedule/abandonment policy; supported-iOS normalization; backup/file protection and export/deletion. This is a manual logger, not a completed adaptive training engine.
 
 The normal `lib/main.dart` release build was restored after device probes, installed without uninstalling and confirmed running on the owner's physical phone (process 28106). No simulator was downloaded or launched.
+
+## September 23 — Day-one policy decisions and planning implementation
+
+Recorded owner-selected scheduling/duration, advancement after explicitly ending a partial workout, explicit confirmation of target-load changes, editable exclusions and approved alternatives (including Tuesday lying curls). Program provenance is ChatGPT-created and owner-tested; trainer involvement is deferred. [Day-one contracts](programs/DAY_ONE_CONTRACTS_2026_09_23.md) define data records, the storage extension and a 25-variation catalog coverage/review packet. Remaining decisions have named roles and milestone dependencies; no absent reviewer or review evidence is fabricated.
+
+Implemented pure `SessionPlanningPolicy` and advisory duration comparison with eight additional tests. No app/UI wiring, persistence change, catalog activation, dynamic replacement execution or load-confirmation execution is claimed. Existing manual v1 prescriptions remain unchanged to preserve historical records. Earlier Day 1 work remains in progress; long-absence handling, bodyweight rehearsals, timing assumptions and required reviews are open.
+
+Validation for this slice: `dart format --output=none --set-exit-if-changed .` passed (49 files, zero changes); `flutter analyze` passed with no issues; `flutter test --reporter compact` passed all 235 tests; final diff/whitespace review passed. Dependency resolution noted four newer versions outside current constraints; no dependency changed. Physical-device/native integration tests were not run because this change adds standalone domain policies and documentation, with no device/storage integration. Existing uncommitted work was preserved; no commit was created.
+
+## September 23 — Warm-up v2 approved and domain policies implemented
+
+The owner approved the [researched W1–W7 policy](research/WARMUP_REVIEW_2026_09_23.md) after reviewing the findings. Added standalone bodyweight/assistance target generation, a v2 wrapper retaining the external-load calculation, and explicit continuation checks for feedback, rest, interruption and fresh gate inputs. Assistance uses its own quantity; supported knee raises and kneeling rollout ranges require matching verification. No guessed warm-up setting is derived from the owner's approximate working assistance.
+
+Validation: 15 new tests passed; full `flutter test --reporter compact` passed **250 tests**. `dart format --output=none --set-exit-if-changed .` passed (51 files, zero changes), `flutter analyze` passed with no issues after correcting four brace-style notices, and final diff/whitespace review passed. No dependencies changed; the existing four newer-outside-constraints package notices remain. Physical-device/native integration tests were not rerun: this change has no storage/UI integration. Real equipment verification, reviewed variation bindings, persistent execution/receipts and app integration remain pending. No existing v1 prescriptions or catalog availability were changed; no commit was created.
+
+## Day 3 backend — recommendation-linked storage and trustworthy history
+
+Implemented immutable versioned prescription snapshots, separate generated occurrences/actuals, exact target validation, stable per-profile sequences, one active occurrence, completion/early end, transactional receipts, audited corrections and conservative history-revision invalidation. Historical prescriptions do not depend on the current program constant. Corrections retain pain-stop flags. The repository validates complete sequence and audit chains before exposing history. The progression adapter keeps intervening incomplete/incomparable exposures, exact setup revisions and baseline-confirmation references; it excludes warm-ups and never reads practice/manual stores.
+
+Validation: 278 unit/widget tests, seven native SQLite integration tests on the authorized iPhone 17 Pro simulator, formatting (66 files, zero changes), static analysis (no issues), and whitespace review passed. Tests cover two-exposure increase followed by correction-driven hold, interrupted/early-ended evidence, version/setup/baseline comparability, both sides, malformed payloads, isolated profiles, retry/conflict, transactional rollback, stale future rejection, historical reads and unsupported-schema preservation. Synthetic fixture data only; no dependencies changed. Physical-device, full-process interruption, airplane-mode and full adaptive-loop acceptance were not run for this slice.
+
+Remaining: guarded Day 4 composition and consistent current-input acquisition across stores; Day 5 live execution/scheduling and proposal confirmation; real catalog review/verified setup; Day 6 ownership services. The current UI stays unchanged. Backend storage success does not mean the full adaptive workout generator is enabled.

@@ -1,5 +1,7 @@
 # Week-one rules — approved owner policy
 
+> Follow-up decisions: [Day-one contracts](DAY_ONE_CONTRACTS_2026_09_23.md) approve user-selected schedule/duration, early-end advancement, explicit target confirmation and Tuesday's lying-curl alternative. The program was created with ChatGPT and adopted by the owner; no independent trainer review is recorded. Historical v1 prescriptions remain unchanged until versioned readers and bindings are implemented.
+
 Status: APPROVED by the owner on September 23, 2026: “the rules look good and I approve these.” Rule version: `owner-program-v1`. Rules P1–P10 and the logging conventions may be implemented. Unresolved warm-up, timing, equipment and review prerequisites listed below remain unresolved; approval does not enable the real catalog or complete session generation.
 
 ## Evidence boundary

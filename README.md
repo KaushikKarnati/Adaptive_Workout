@@ -4,13 +4,15 @@ An offline-first mobile application that generates deterministic, evidence-infor
 
 ## Current status
 
-A physical-iPhone practice logger with local SQLite storage, plus independently tested eligibility, progression and warm-up domain policies.
+A physical-iPhone practice and manual-program logger with local SQLite storage, plus standalone eligibility, progression, warm-up and calendar-planning domain policies.
 
-The production app saves practice sessions, distinct sets, skips, corrections and completion, resumes a saved draft, and displays history. Save confirmation follows a committed transaction; failed saves retain input for safe retry. Practice records never affect real recommendations. The original temporary sample flow remains available through explicit demo/test injection. Full approved-program generation and real training history integration remain pending.
+The production app saves practice sessions, distinct sets, skips, corrections and completion, resumes a saved draft, and displays history. Save confirmation follows a committed transaction; failed saves retain input for safe retry. Practice records never affect real recommendations. The original temporary sample flow remains available through explicit demo/test injection. Recommendation-linked backend storage and a progression-history adapter are implemented and tested separately; full approved-program generation and live app integration remain pending.
 
 The approved structural exercise-eligibility and safety gate is implemented with synthetic domain tests, but it is not connected to the sample UI or used to generate real workouts.
 
 A real wger-backed catalog slice now pins the three approved benchmark identities and attribution under catalog version `2026.09.08.1`. The entries remain disabled pending science, safety, equipment, and licensing review and are not connected to workout generation.
+
+User-selected training days and advisory session-duration preferences are defined in [the Day-one contracts](docs/programs/DAY_ONE_CONTRACTS_2026_09_23.md). Local setup preferences, equipment drafts and explicit starting-load confirmations are saved through the setup screen. Calendar planning remains independent; generated-session storage now has stable sequence and active/completed/ended-early states, while live scheduling, proposed-load confirmation and dynamic alternative selection remain pending. The owner’s ChatGPT-created program is being tested personally; catalog review is not complete.
 
 ## Planned stack
 
@@ -51,3 +53,9 @@ flutter test integration_test/practice_restart_test.dart -d DEVICE_ID --no-unins
 Always keep `--no-uninstall`: Flutter otherwise removes the app and its data. Tests use separate fixture database files and do not delete the production database. After testing, rebuild the regular app with `flutter run --release -d DEVICE_ID`.
 
 The program preview now links to **Log workouts / history**. Manual sessions support persistent drafts, per-set actuals, explicit skips, separate warm-ups, single-arm left/right records, and audited corrections. Actuals require explicit setup and load convention; they never automatically become verified baselines or progression evidence. Storage lives separately from practice data. See ADR 0009 and `docs/TESTING.md` for persistence and physical-device verification boundaries.
+
+## Recommendation storage and history
+
+[Day 3 storage](docs/decisions/0013-recommendation-history-storage.md) keeps immutable prescriptions separate from actuals, audits corrections and rejects stale future recommendations. Its progression adapter preserves incomplete/incomparable exposures and excludes practice/manual databases. It uses a separate `recommendations.sqlite` store and has no production generation/UI caller yet. Required catalog reviews remain pending.
+
+Validation: 278 unit/widget tests and seven native SQLite tests passed on the authorized iPhone 17 Pro simulator, along with formatting and static analysis. Native tests use only `recommendation_history_fixture.sqlite` and must run with `--no-uninstall`. Simulator reopen and injected rollback checks do not establish physical-device power-loss recovery.

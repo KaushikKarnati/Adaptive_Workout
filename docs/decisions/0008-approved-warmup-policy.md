@@ -1,5 +1,7 @@
 # ADR 0008: Approved warm-up target policy
 
+> Historical v1 decision. [ADR 0011](0011-approved-warmup-v2.md) adds the owner-approved bodyweight/assistance and continuation policies while preserving this calculation.
+
 Status: accepted September 23, 2026 following explicit owner approval of `programs/WARMUP_PROPOSAL.md`.
 
 ## Decision
