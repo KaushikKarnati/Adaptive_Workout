@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:adaptive_workout/application/appearance_preferences.dart';
 import 'package:adaptive_workout/data/repositories/sqlite_appearance_repository.dart';
+import 'package:adaptive_workout/features/home/workout_home_page.dart';
 import 'package:adaptive_workout/features/program/program_logging_page.dart';
 import 'package:adaptive_workout/features/program/program_page.dart';
 import 'package:adaptive_workout/features/settings/appearance_controller.dart';
@@ -58,7 +59,14 @@ void main() {
         await capture('$name-${value.name}');
       }
 
-      await show(null, 'home');
+      await show(
+        WorkoutHomePage(workoutRepository: FakeProgramLogRepository()),
+        'workout',
+      );
+      await tester.tap(find.byKey(const Key('tab_settings')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await capture('settings-${value.name}');
       await show(const AppearancePage(), 'appearance');
       await show(const ProgramPage(), 'program');
       await show(

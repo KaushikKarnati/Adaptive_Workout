@@ -11,7 +11,8 @@ import 'training_setup_controller.dart';
 import '../gyms/gym_profile_page.dart';
 
 class TrainingSetupPage extends StatefulWidget {
-  const TrainingSetupPage({super.key, this.repository});
+  const TrainingSetupPage({super.key, this.repository, this.embedded = false});
+  final bool embedded;
   final TrainingSetupRepository? repository;
   @override
   State<TrainingSetupPage> createState() => _TrainingSetupPageState();
@@ -80,230 +81,229 @@ class _TrainingSetupPageState extends State<TrainingSetupPage> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: c?.locked != true,
-    child: Scaffold(
-      appBar: AppBar(title: const Text('Training setup')),
-      body: SafeArea(
-        child: c == null
-            ? Center(
-                child: openFailed
-                    ? TextButton(
-                        onPressed: _open,
-                        child: const Text('Retry opening setup'),
-                      )
-                    : const CircularProgressIndicator(),
-              )
-            : AppContent(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-                  children: [
-                    const AppPageHeader(
-                      title: 'Your routine',
-                      subtitle: 'Save your preferences and verify equipment gradually at the gym. These records stay on this device.',
-                    ),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const AppSectionHeader(title: 'Training days'),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                for (var day = 1; day <= 7; day++)
-                                  FilterChip(
-                                    label: Text(
-                                      [
-                                        'Mon',
-                                        'Tue',
-                                        'Wed',
-                                        'Thu',
-                                        'Fri',
-                                        'Sat',
-                                        'Sun',
-                                      ][day - 1],
-                                    ),
-                                    selected: days.contains(day),
-                                    onSelected: c!.locked || !c!.loaded
-                                        ? null
-                                        : (on) {
-                                            if (on == days.contains(day)) {
-                                              return;
-                                            }
-                                            setState(() {
-                                              on
-                                                  ? days.add(day)
-                                                  : days.remove(day);
-                                            });
-                                            AppHaptics.of(context).selection();
-                                          },
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            TextField(
-                              controller: minutes,
-                              enabled: !c!.locked,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Preferred workout minutes',
-                                helperText:
-                                    'A time preference, not a hard cutoff.',
-                                helperMaxLines: 3,
+  Widget build(BuildContext context) {
+    final content = c == null
+        ? Center(
+            child: openFailed
+                ? TextButton(
+                    onPressed: _open,
+                    child: const Text('Retry opening setup'),
+                  )
+                : const CircularProgressIndicator(),
+          )
+        : ListView(
+            shrinkWrap: widget.embedded,
+            physics: widget.embedded
+                ? const NeverScrollableScrollPhysics()
+                : null,
+            padding: widget.embedded
+                ? EdgeInsets.zero
+                : const EdgeInsets.fromLTRB(20, 12, 20, 40),
+            children: [
+              if (!widget.embedded)
+                const AppPageHeader(
+                  title: 'Your routine',
+                  subtitle: 'Save your preferences and verify equipment gradually at the gym. These records stay on this device.',
+                ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const AppSectionHeader(title: 'Training days'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (var day = 1; day <= 7; day++)
+                            FilterChip(
+                              label: Text(
+                                [
+                                  'Mon',
+                                  'Tue',
+                                  'Wed',
+                                  'Thu',
+                                  'Fri',
+                                  'Sat',
+                                  'Sun',
+                                ][day - 1],
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            ExpansionTile(
-                              tilePadding: EdgeInsets.zero,
-                              title: const Text('Exercises to exclude'),
-                              children: [
-                                for (final entry in setupVariationNames.entries)
-                                  CheckboxListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(entry.value),
-                                    value: exclusions.contains(entry.key),
-                                    onChanged: c!.locked
-                                        ? null
-                                        : (on) {
-                                            if (on == null ||
-                                                on ==
-                                                    exclusions.contains(
-                                                      entry.key,
-                                                    )) {
-                                              return;
-                                            }
-                                            setState(() {
-                                              on
-                                                  ? exclusions.add(entry.key)
-                                                  : exclusions.remove(
-                                                      entry.key,
-                                                    );
-                                            });
-                                            AppHaptics.of(context).selection();
-                                          },
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            FilledButton(
-                              onPressed: c!.locked || !c!.loaded
+                              selected: days.contains(day),
+                              onSelected: c!.locked || !c!.loaded
                                   ? null
-                                  : () async {
-                                      final ok = await c!.savePreferences(
-                                        days.toList(),
-                                        minutes.text,
-                                        exclusions.toList(),
-                                      );
-                                      if (!context.mounted) return;
-                                      if (ok) {
-                                        AppHaptics.of(context).success();
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Preferences saved on this device.',
-                                                ),
-                                              ),
-                                            );
-                                      } else {
-                                        AppHaptics.of(context).error();
+                                  : (on) {
+                                      if (on == days.contains(day)) {
+                                        return;
                                       }
+                                      setState(() {
+                                        on ? days.add(day) : days.remove(day);
+                                      });
+                                      AppHaptics.of(context).selection();
                                     },
-                              child: const Text('Save preferences'),
                             ),
-                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: minutes,
+                        enabled: !c!.locked,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Preferred workout minutes',
+                          helperText: 'A time preference, not a hard cutoff.',
+                          helperMaxLines: 3,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.location_on_outlined),
-                        title: const Text('My gym'),
-                        subtitle: const Text(
-                          'Choose a location and confirm its equipment',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: c!.locked
-                            ? null
-                            : () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const GymProfilePage(),
-                                ),
-                              ),
+                      const SizedBox(height: 12),
+                      ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        title: const Text('Exercises to exclude'),
+                        children: [
+                          for (final entry in setupVariationNames.entries)
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(entry.value),
+                              value: exclusions.contains(entry.key),
+                              onChanged: c!.locked
+                                  ? null
+                                  : (on) {
+                                      if (on == null ||
+                                          on ==
+                                              exclusions.contains(entry.key)) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        on
+                                            ? exclusions.add(entry.key)
+                                            : exclusions.remove(entry.key);
+                                      });
+                                      AppHaptics.of(context).selection();
+                                    },
+                            ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const AppSectionHeader(
-                      title: 'Equipment and starting loads',
-                      subtitle: 'Add the exact setup you use at the gym.',
-                    ),
-                    for (final equipment
-                        in c!.saved?.equipment ?? <EquipmentSetup>[])
-                      Card(
-                        child: ListTile(
-                          title: Text(equipment.label),
-                          subtitle: Text(
-                            '${setupVariationNames[equipment.variation]} · ${equipment.confirmed ? 'Settings confirmed by you' : 'Needs confirmation'}',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: c!.locked ? null : () => _edit(equipment),
-                        ),
-                      ),
-                    for (final load
-                        in c!.saved?.startingLoads ?? <StartingLoad>[])
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(
-                            '${load.sessionId} · ${setupVariationNames[load.variation]}: ${load.microPounds == null ? 'bodyweight' : '${displayPounds(load.microPounds!)} lb${load.convention == SetupLoadConvention.assistance ? ' assistance' : ''}'} · ${c!.saved!.baselineIsCurrent(load) ? 'confirmed' : 'needs reconfirmation'}',
-                          ),
-                        ),
-                      ),
-                    OutlinedButton.icon(
-                      onPressed: c!.locked || !c!.loaded ? null : () => _edit(),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: const Text('Add equipment / starting load'),
-                    ),
-                    const SizedBox(height: 20),
-                    const AppNotice(
-                      text: 'Exercise review is still pending. Saving setup does not enable weight recommendations. Capabilities and limitations remain unassessed until explicitly recorded.',
-                    ),
-                    if (c!.error != null) ...[
                       const SizedBox(height: 16),
-                      Semantics(
-                        liveRegion: true,
-                        child: AppNotice(text: c!.error!, warning: true),
+                      FilledButton(
+                        onPressed: c!.locked || !c!.loaded
+                            ? null
+                            : () async {
+                                final ok = await c!.savePreferences(
+                                  days.toList(),
+                                  minutes.text,
+                                  exclusions.toList(),
+                                );
+                                if (!context.mounted) return;
+                                if (ok) {
+                                  AppHaptics.of(context).success();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Preferences saved on this device.',
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  AppHaptics.of(context).error();
+                                }
+                              },
+                        child: const Text('Save preferences'),
                       ),
                     ],
-                    if (c!.canRetry)
-                      TextButton(
-                        onPressed: () async {
-                          final ok = await c!.retry();
-                          if (!context.mounted) return;
-                          if (ok) {
-                            AppHaptics.of(context).success();
-                          } else {
-                            AppHaptics.of(context).error();
-                          }
-                        },
-                        child: const Text('Retry save'),
-                      ),
-                    if (!c!.loaded && !c!.busy)
-                      TextButton(
-                        onPressed: c!.load,
-                        child: const Text('Retry loading'),
-                      ),
-                    if (c!.busy) const LinearProgressIndicator(),
-                  ],
+                  ),
                 ),
               ),
+              if (!widget.embedded) ...[
+                const SizedBox(height: 28),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('My gym'),
+                    subtitle: const Text(
+                      'Choose a location and confirm its equipment',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: c!.locked
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const GymProfilePage(),
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              const AppSectionHeader(
+                title: 'Equipment and starting loads',
+                subtitle: 'Add the exact setup you use at the gym.',
+              ),
+              for (final equipment in c!.saved?.equipment ?? <EquipmentSetup>[])
+                Card(
+                  child: ListTile(
+                    title: Text(equipment.label),
+                    subtitle: Text(
+                      '${setupVariationNames[equipment.variation]} · ${equipment.confirmed ? 'Settings confirmed by you' : 'Needs confirmation'}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: c!.locked ? null : () => _edit(equipment),
+                  ),
+                ),
+              for (final load in c!.saved?.startingLoads ?? <StartingLoad>[])
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      '${load.sessionId} · ${setupVariationNames[load.variation]}: ${load.microPounds == null ? 'bodyweight' : '${displayPounds(load.microPounds!)} lb${load.convention == SetupLoadConvention.assistance ? ' assistance' : ''}'} · ${c!.saved!.baselineIsCurrent(load) ? 'confirmed' : 'needs reconfirmation'}',
+                    ),
+                  ),
+                ),
+              OutlinedButton.icon(
+                onPressed: c!.locked || !c!.loaded ? null : () => _edit(),
+                icon: const Icon(Icons.add, size: 20),
+                label: const Text('Add equipment / starting load'),
+              ),
+              const SizedBox(height: 20),
+              const AppNotice(
+                text: 'Exercise review is still pending. Saving setup does not enable weight recommendations. Capabilities and limitations remain unassessed until explicitly recorded.',
+              ),
+              if (c!.error != null) ...[
+                const SizedBox(height: 16),
+                Semantics(
+                  liveRegion: true,
+                  child: AppNotice(text: c!.error!, warning: true),
+                ),
+              ],
+              if (c!.canRetry)
+                TextButton(
+                  onPressed: () async {
+                    final ok = await c!.retry();
+                    if (!context.mounted) return;
+                    if (ok) {
+                      AppHaptics.of(context).success();
+                    } else {
+                      AppHaptics.of(context).error();
+                    }
+                  },
+                  child: const Text('Retry save'),
+                ),
+              if (!c!.loaded && !c!.busy)
+                TextButton(
+                  onPressed: c!.load,
+                  child: const Text('Retry loading'),
+                ),
+              if (c!.busy) const LinearProgressIndicator(),
+            ],
+          );
+    if (widget.embedded) return content;
+    return PopScope(
+      canPop: c?.locked != true,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Training setup')),
+        body: SafeArea(child: AppContent(child: content)),
       ),
-    ),
-  );
+    );
+  }
 }
 
 String _conventionName(SetupLoadConvention c) => switch (c) {

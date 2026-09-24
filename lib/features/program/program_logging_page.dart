@@ -6,12 +6,20 @@ import '../../domain/logging/program_log.dart';
 import '../../domain/workout/owner_program.dart';
 import '../../ui/app_components.dart';
 import '../../ui/app_haptics.dart';
+import '../history/workout_history_page.dart';
 import 'program_log_controller.dart';
 import 'session_timer.dart';
 
 class ProgramLoggingPage extends StatefulWidget {
-  const ProgramLoggingPage({super.key, this.repository});
+  const ProgramLoggingPage({
+    super.key,
+    this.repository,
+    this.initialSessionId,
+    this.active = true,
+  });
   final ProgramLogRepository? repository;
+  final String? initialSessionId;
+  final bool active;
   @override
   State<ProgramLoggingPage> createState() => _ProgramLoggingPageState();
 }
@@ -21,6 +29,8 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
   bool openFailed = false;
   final rest = RestCountdown();
   String? timedSessionId;
+  bool historyVisible = false;
+  int historyReloadToken = 0;
   @override
   void initState() {
     super.initState();
@@ -39,6 +49,7 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
       c.addListener(_changed);
       setState(() => openFailed = false);
       await c.load();
+      if (widget.initialSessionId != null) c.select(widget.initialSessionId);
     } catch (_) {
       if (mounted) setState(() => openFailed = true);
     }
@@ -254,6 +265,25 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
     }
   }
 
+  void _showHistory(bool value) {
+    if (controller?.locked != false || historyVisible == value) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      historyVisible = value;
+      if (value) historyReloadToken++;
+    });
+    AppHaptics.of(context).selection();
+  }
+
+  Future<void> _openHistoryLog(ProgramLog log) async {
+    final c = controller;
+    if (c == null || c.locked) return;
+    await c.load();
+    if (!mounted) return;
+    if (c.error == null) c.select(log.id);
+    setState(() => historyVisible = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = controller, log = c?.selected;
@@ -274,17 +304,18 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
     return PopScope(
       canPop: c?.locked != true,
       child: Scaffold(
-        bottomNavigationBar: log == null
+        bottomNavigationBar: log == null || historyVisible
             ? null
             : SessionTimerPanel(
                 start: log.startedAt,
                 end: log.completedAt,
                 rest: rest,
+                active: widget.active,
               ),
         appBar: AppBar(
-          title: Text(log == null ? 'Workout log' : log.plan.day),
+          title: Text(log == null || historyVisible ? 'Workout' : log.plan.day),
           actions: [
-            if (log != null)
+            if (log != null && !historyVisible)
               IconButton(
                 key: const Key('delete_selected_workout'),
                 tooltip: 'Delete workout',
@@ -293,261 +324,285 @@ class _ProgramLoggingPageState extends State<ProgramLoggingPage> {
                 icon: const Icon(Icons.delete_outline),
               ),
           ],
-          leading: log == null
+          leading: log == null || historyVisible
               ? null
               : IconButton(
-                  tooltip: 'Workout history',
+                  tooltip: 'Workout overview',
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                   onPressed: c!.locked ? null : () => c.select(null),
                 ),
         ),
-        body: SafeArea(
-          child: c == null
-              ? Center(
-                  child: openFailed
-                      ? TextButton(
-                          onPressed: _open,
-                          child: const Text('Could not open workouts. Retry'),
-                        )
-                      : const CircularProgressIndicator(),
-                )
-              : AppContent(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                    children: [
-                      if (log == null)
-                        const AppPageHeader(
-                          title: 'Manual workout log',
-                          subtitle: 'Record what you actually did. These entries do not verify a baseline or enable weight recommendations.',
-                        )
-                      else ...[
-                        AppPageHeader(
-                          title: log.plan.title,
-                          eyebrow: 'MANUAL WORKOUT LOG',
-                        ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: _statusLabel(
-                            log.completed
-                                ? log.endedEarly
-                                      ? 'Finished early · Saved records kept'
-                                      : 'Saved workout · Tap a set to correct it'
-                                : 'Draft · Each accepted set is saved',
-                            icon: log.completed
-                                ? Icons.check_circle_outline_rounded
-                                : Icons.circle_outlined,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Record what you actually did. These entries do not verify a baseline or enable weight recommendations.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      if (c.busy) ...[
-                        const LinearProgressIndicator(),
-                        const SizedBox(height: 12),
-                      ],
-                      OutlinedButton.icon(
-                        key: const Key('choose_today_workout'),
-                        onPressed: c.locked ? null : _chooseToday,
-                        icon: const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 19,
-                        ),
-                        label: const Text('Choose today’s workout'),
+        body: Column(
+          children: [
+            AppContent(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Log', key: Key('workout_log_view')),
+                        icon: Icon(Icons.fitness_center_rounded),
                       ),
-                      if (c.pending != null && c.error != null)
-                        for (final set in c.pending!.sets.where(
-                          (s) => !c.selected!.sets.contains(s),
-                        ))
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: AppNotice(
-                              text:
-                                  'Unconfirmed entry: ${set.slot}, set ${set.index}, ${set.side.name}: ${set.skipped ? 'skipped' : '${set.reps} reps, ${set.load == null ? 'bodyweight' : '${formatPounds(set.load!)} lb'}, RIR ${set.rir ?? 'unknown'}'}',
-                              warning: true,
-                            ),
-                          ),
-                      if (c.error != null) ...[
-                        const SizedBox(height: 12),
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            c.error!,
-                            key: const Key('program_error'),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colors.error,
-                            ),
-                          ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(
+                          'History',
+                          key: Key('workout_history_view'),
                         ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            onPressed: c.busy ? null : _retry,
-                            child: const Text('Retry'),
-                          ),
-                        ),
-                      ],
-                      if (log == null) ...[
-                        const SizedBox(height: 20),
-                        if (c.draft != null)
-                          FilledButton.icon(
-                            onPressed: c.locked
-                                ? null
-                                : () => c.select(c.draft!.id),
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: Text('Resume ${c.draft!.plan.day}'),
-                          ),
-                        if (c.draft == null)
-                          Card(
-                            child: Column(
+                        icon: Icon(Icons.history_rounded),
+                      ),
+                    ],
+                    selected: {historyVisible},
+                    onSelectionChanged: c == null || c.locked
+                        ? null
+                        : (values) => _showHistory(values.single),
+                    showSelectedIcon: false,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: historyVisible ? 1 : 0,
+                children: [
+                  SafeArea(
+                    child: c == null
+                        ? Center(
+                            child: openFailed
+                                ? TextButton(
+                                    onPressed: _open,
+                                    child: const Text(
+                                      'Could not open workouts. Retry',
+                                    ),
+                                  )
+                                : const CircularProgressIndicator(),
+                          )
+                        : AppContent(
+                            child: ListView(
+                              key: PageStorageKey(
+                                'workout_log_${log?.id ?? 'overview'}',
+                              ),
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                               children: [
-                                for (final plan in ownerProgram) ...[
-                                  if (plan != ownerProgram.first)
-                                    const Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                    ),
-                                  ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 4,
-                                    ),
-                                    title: Text('Start ${plan.day}'),
-                                    subtitle: Text(plan.title),
-                                    trailing: const Icon(
-                                      Icons.chevron_right_rounded,
-                                    ),
-                                    onTap: c.locked
-                                        ? null
-                                        : () => _start(plan.id),
+                                if (log == null)
+                                  const AppPageHeader(
+                                    title: 'Manual workout log',
+                                    subtitle: 'Record what you actually did. These entries do not verify a baseline or enable weight recommendations.',
+                                  )
+                                else ...[
+                                  AppPageHeader(
+                                    title: log.plan.title,
+                                    eyebrow: 'MANUAL WORKOUT LOG',
                                   ),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _statusLabel(
+                                      log.completed
+                                          ? log.endedEarly
+                                                ? 'Finished early · Saved records kept'
+                                                : 'Saved workout · Tap a set to correct it'
+                                          : 'Draft · Each accepted set is saved',
+                                      icon: log.completed
+                                          ? Icons.check_circle_outline_rounded
+                                          : Icons.circle_outlined,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Record what you actually did. These entries do not verify a baseline or enable weight recommendations.',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 16),
+                                if (c.busy) ...[
+                                  const LinearProgressIndicator(),
+                                  const SizedBox(height: 12),
+                                ],
+                                OutlinedButton.icon(
+                                  key: const Key('choose_today_workout'),
+                                  onPressed: c.locked ? null : _chooseToday,
+                                  icon: const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 19,
+                                  ),
+                                  label: const Text('Choose today’s workout'),
+                                ),
+                                if (c.pending != null && c.error != null)
+                                  for (final set in c.pending!.sets.where(
+                                    (s) => !c.selected!.sets.contains(s),
+                                  ))
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 12),
+                                      child: AppNotice(
+                                        text:
+                                            'Unconfirmed entry: ${set.slot}, set ${set.index}, ${set.side.name}: ${set.skipped ? 'skipped' : '${set.reps} reps, ${set.load == null ? 'bodyweight' : '${formatPounds(set.load!)} lb'}, RIR ${set.rir ?? 'unknown'}'}',
+                                        warning: true,
+                                      ),
+                                    ),
+                                if (c.error != null) ...[
+                                  const SizedBox(height: 12),
+                                  Semantics(
+                                    liveRegion: true,
+                                    child: Text(
+                                      c.error!,
+                                      key: const Key('program_error'),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(color: colors.error),
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton(
+                                      onPressed: c.busy ? null : _retry,
+                                      child: const Text('Retry'),
+                                    ),
+                                  ),
+                                ],
+                                if (log == null) ...[
+                                  const SizedBox(height: 20),
+                                  if (c.draft != null)
+                                    FilledButton.icon(
+                                      onPressed: c.locked
+                                          ? null
+                                          : () => c.select(c.draft!.id),
+                                      icon: const Icon(
+                                        Icons.play_arrow_rounded,
+                                      ),
+                                      label: Text(
+                                        'Resume ${c.draft!.plan.day}',
+                                      ),
+                                    ),
+                                  if (c.draft == null)
+                                    Card(
+                                      child: Column(
+                                        children: [
+                                          for (final plan in ownerProgram) ...[
+                                            if (plan != ownerProgram.first)
+                                              const Divider(
+                                                height: 1,
+                                                indent: 16,
+                                                endIndent: 16,
+                                              ),
+                                            ListTile(
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 4,
+                                                  ),
+                                              title: Text('Start ${plan.day}'),
+                                              subtitle: Text(plan.title),
+                                              trailing: const Icon(
+                                                Icons.chevron_right_rounded,
+                                              ),
+                                              onTap: c.locked
+                                                  ? null
+                                                  : () => _start(plan.id),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                ] else ...[
+                                  if (painExerciseNames.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    Semantics(
+                                      liveRegion: true,
+                                      container: true,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: colors.errorContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Pain was recorded for ${painExerciseNames.join(', ')}. Stop the affected exercise. Do not add another set, automatically substitute it, or increase its load or volume.',
+                                          key: const Key('program_pain_stop'),
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                color: colors.onErrorContainer,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  for (final block in log.plan.blocks) ...[
+                                    const SizedBox(height: 24),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                        left: 4,
+                                      ),
+                                      child: Text(
+                                        block.isSuperset
+                                            ? 'Superset · Rest ${block.restSeconds} sec after both exercises'
+                                            : 'Rest ${block.restSeconds} sec${block.exercises.single.eachSide ? ' after both sides' : ''}',
+                                        style: theme.textTheme.labelLarge
+                                            ?.copyWith(
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ),
+                                    if (!log.completed)
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton.icon(
+                                          onPressed: () {
+                                            rest.start(
+                                              block.restSeconds,
+                                              DateTime.now(),
+                                            );
+                                            AppHaptics.of(context).impact();
+                                          },
+                                          icon: const Icon(
+                                            Icons.timer_outlined,
+                                          ),
+                                          label: Text(
+                                            'Start ${block.restSeconds}s rest',
+                                          ),
+                                        ),
+                                      ),
+                                    for (final exercise in block.exercises)
+                                      _exerciseCard(log, exercise),
+                                  ],
+                                  if (!log.completed) ...[
+                                    const SizedBox(height: 16),
+                                    FilledButton(
+                                      onPressed: c.locked ? null : _finish,
+                                      child: const Text('Finish workout'),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    TextButton(
+                                      onPressed: c.locked
+                                          ? null
+                                          : () => c.select(null),
+                                      child: const Text('Leave saved as draft'),
+                                    ),
+                                  ],
                                 ],
                               ],
                             ),
                           ),
-                        const SizedBox(height: 28),
-                        const AppSectionHeader(title: 'History'),
-                        const SizedBox(height: 12),
-                        if (!c.logs.any((l) => l.completed))
-                          const AppNotice(
-                            text: 'Your finished workouts will appear here.',
-                            icon: Icons.history_rounded,
-                          ),
-                        for (final saved in c.logs.where((l) => l.completed))
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Card(
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  8,
-                                  8,
-                                  8,
-                                ),
-                                title: Text(
-                                  '${saved.plan.day} · ${saved.endedEarly
-                                      ? 'Finished early'
-                                      : saved.hasSkips
-                                      ? 'Finished with skipped sets'
-                                      : 'Finished'}',
-                                ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    saved.startedAt
-                                        .toLocal()
-                                        .toString()
-                                        .split('.')
-                                        .first,
-                                  ),
-                                ),
-                                onTap: c.locked
-                                    ? null
-                                    : () => c.select(saved.id),
-                                trailing: IconButton(
-                                  key: Key('delete_workout_${saved.id}'),
-                                  tooltip: 'Delete workout',
-                                  color: colors.error,
-                                  onPressed: c.locked
-                                      ? null
-                                      : () => _deleteWorkout(saved),
-                                  icon: const Icon(Icons.delete_outline),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ] else ...[
-                        if (painExerciseNames.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Semantics(
-                            liveRegion: true,
-                            container: true,
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colors.errorContainer,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Pain was recorded for ${painExerciseNames.join(', ')}. Stop the affected exercise. Do not add another set, automatically substitute it, or increase its load or volume.',
-                                key: const Key('program_pain_stop'),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: colors.onErrorContainer,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        for (final block in log.plan.blocks) ...[
-                          const SizedBox(height: 24),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12, left: 4),
-                            child: Text(
-                              block.isSuperset
-                                  ? 'Superset · Rest ${block.restSeconds} sec after both exercises'
-                                  : 'Rest ${block.restSeconds} sec${block.exercises.single.eachSide ? ' after both sides' : ''}',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          if (!log.completed)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: () => rest.start(
-                                  block.restSeconds,
-                                  DateTime.now(),
-                                ),
-                                icon: const Icon(Icons.timer_outlined),
-                                label: Text('Start ${block.restSeconds}s rest'),
-                              ),
-                            ),
-                          for (final exercise in block.exercises)
-                            _exerciseCard(log, exercise),
-                        ],
-                        if (!log.completed) ...[
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: c.locked ? null : _finish,
-                            child: const Text('Finish workout'),
-                          ),
-                          const SizedBox(height: 4),
-                          TextButton(
-                            onPressed: c.locked ? null : () => c.select(null),
-                            child: const Text('Leave saved as draft'),
-                          ),
-                        ],
-                      ],
-                    ],
                   ),
-                ),
+                  if (c == null)
+                    const SizedBox.shrink()
+                  else
+                    WorkoutHistoryPage(
+                      repository: c.repository,
+                      embedded: true,
+                      reloadToken: historyReloadToken,
+                      onOpenLog: _openHistoryLog,
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

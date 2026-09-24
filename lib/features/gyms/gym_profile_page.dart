@@ -4,6 +4,7 @@ import '../../data/repositories/sqlite_gym_profile_repository.dart';
 import '../../domain/exercises/catalog/exercise_catalog_validator.dart';
 import '../../domain/gyms/gym_profile.dart';
 import '../../ui/app_components.dart';
+import '../../ui/app_haptics.dart';
 import 'gym_profile_controller.dart';
 
 String equipmentLabel(String id) =>
@@ -15,7 +16,8 @@ String availabilityLabel(EquipmentAvailability value) => switch (value) {
 };
 
 class GymProfilePage extends StatefulWidget {
-  const GymProfilePage({super.key, this.repository});
+  const GymProfilePage({super.key, this.repository, this.embedded = false});
+  final bool embedded;
   final GymProfileRepository? repository;
   @override
   State<GymProfilePage> createState() => _GymProfilePageState();
@@ -83,6 +85,7 @@ class _GymProfilePageState extends State<GymProfilePage> {
                   Navigator.pop(context, gym);
                 } catch (_) {
                   setLocal(() => error = 'Enter a gym name using plain text.');
+                  AppHaptics.of(context).error();
                 }
               },
               child: const Text('Add gym'),
@@ -92,7 +95,7 @@ class _GymProfilePageState extends State<GymProfilePage> {
       ),
     );
     // Wait for route animation before disposing controllers used by the dialog.
-    if (gym != null) await c.select(gym);
+    if (gym != null && mounted) await _save(() => c.select(gym));
     await Future<void>.delayed(const Duration(milliseconds: 300));
     name.dispose();
     address.dispose();
@@ -132,7 +135,9 @@ class _GymProfilePageState extends State<GymProfilePage> {
                       ),
                   ],
                   onChanged: (s) {
-                    if (s != null) setLocal(() => status = s);
+                    if (s == null || s == status) return;
+                    setLocal(() => status = s);
+                    AppHaptics.of(context).selection();
                   },
                 ),
                 const SizedBox(height: 16),
@@ -161,9 +166,27 @@ class _GymProfilePageState extends State<GymProfilePage> {
         ),
       ),
     );
-    if (accepted == true) await c.setEquipment(category, status, notes.text);
+    if (accepted == true && mounted) {
+      await _save(() => c.setEquipment(category, status, notes.text));
+    }
     await Future<void>.delayed(const Duration(milliseconds: 300));
     notes.dispose();
+  }
+
+  Future<void> _save(
+    Future<bool> Function() action, {
+    bool selection = false,
+  }) async {
+    final saved = await action();
+    if (!mounted) return;
+    final haptics = AppHaptics.of(context);
+    if (!saved) {
+      haptics.error();
+    } else if (selection) {
+      haptics.selection();
+    } else {
+      haptics.success();
+    }
   }
 
   @override
@@ -171,144 +194,140 @@ class _GymProfilePageState extends State<GymProfilePage> {
     listenable: c,
     builder: (context, _) {
       final gym = c.saved?.selected;
+      final content = ListView(
+        shrinkWrap: widget.embedded,
+        physics: widget.embedded ? const NeverScrollableScrollPhysics() : null,
+        padding: widget.embedded ? EdgeInsets.zero : const EdgeInsets.all(20),
+        children: [
+          if (!widget.embedded)
+            const AppPageHeader(
+              title: 'Equipment at your gym',
+              subtitle: 'Choose a location to load its saved equipment. Your confirmations stay on this device and work offline.',
+            ),
+          if (c.error != null) ...[
+            AppNotice(text: c.error!, warning: true),
+            if (c.canRetry)
+              TextButton(
+                onPressed: () => _save(c.retry),
+                child: const Text('Retry save'),
+              ),
+            TextButton(
+              onPressed: c.busy ? null : c.discardPendingAndReload,
+              child: const Text('Reload saved gyms'),
+            ),
+          ],
+          if (c.busy) const LinearProgressIndicator(),
+          if (c.saved != null) ...[
+            DropdownButtonFormField<String>(
+              key: ValueKey(c.saved!.selectedId),
+              initialValue: c.saved!.selectedId,
+              isExpanded: true,
+              itemHeight: null,
+              decoration: const InputDecoration(labelText: 'Selected gym'),
+              hint: const Text('Choose a gym'),
+              items: [
+                for (final p in [
+                  if (!c.saved!.profiles.any((p) => p.id == homewoodGymId))
+                    homewoodProfile(),
+                  ...c.saved!.profiles,
+                ])
+                  DropdownMenuItem(value: p.id, child: Text(p.name)),
+              ],
+              onChanged: c.locked
+                  ? null
+                  : (id) {
+                      if (id == null || id == c.saved!.selectedId) {
+                        return;
+                      }
+                      _save(
+                        () => c.select(
+                          c.saved!.profiles
+                                  .where((p) => p.id == id)
+                                  .firstOrNull ??
+                              homewoodProfile(),
+                        ),
+                        selection: true,
+                      );
+                    },
+            ),
+            TextButton.icon(
+              onPressed: c.locked ? null : _addGym,
+              icon: const Icon(Icons.add),
+              label: const Text('Add another gym'),
+            ),
+            if (gym != null) ...[
+              if (gym.address.isNotEmpty) Text(gym.address),
+              if (gym.id == homewoodGymId)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: AppNotice(
+                    text: 'Homewood’s public page lists amenities, not individual machines. This is a general checklist, not a verified inventory. Confirm each item you find.',
+                  ),
+                ),
+              if (gym.id == homewoodGymId)
+                const ExpansionTile(
+                  title: Text('Location source'),
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SelectableText(
+                        'CLUB4 official location page · reviewed September 24, 2026\n$homewoodSource\nUsed for name and address only.',
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              Text(
+                '${gym.availableCategories.length} equipment categories confirmed available',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Text(
+                'Tap an item to confirm availability or record a correction. Unchecked items are not assumed available.',
+              ),
+              const SizedBox(height: 12),
+              for (final category in ExerciseCatalogValidator.equipmentIds)
+                Builder(
+                  builder: (context) {
+                    final item = gym.equipment
+                        .where((e) => e.category == category)
+                        .firstOrNull;
+                    final status =
+                        item?.availability ?? EquipmentAvailability.unknown;
+                    return Card(
+                      child: ListTile(
+                        title: Text(equipmentLabel(category)),
+                        subtitle: Text(
+                          '${availabilityLabel(status)}${item?.checkedAt == null ? '' : ' · checked ${item!.checkedAt!.toLocal().toIso8601String().substring(0, 10)}'}${item?.notes.isNotEmpty == true ? '\n${item!.notes}' : ''}',
+                        ),
+                        leading: Icon(switch (status) {
+                          EquipmentAvailability.available =>
+                            Icons.check_circle_outline,
+                          EquipmentAvailability.unavailable => Icons.block,
+                          EquipmentAvailability.unknown => Icons.help_outline,
+                        }),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: c.locked ? null : () => _edit(category),
+                      ),
+                    );
+                  },
+                ),
+              const AppNotice(
+                text: 'Availability records do not set weights or approve exercises. Use Equipment and starting loads in Training setup to verify your exact setup.',
+              ),
+              TextButton(
+                onPressed: c.locked ? null : () => _save(c.clearSelection),
+                child: const Text('Clear selected gym'),
+              ),
+            ],
+          ],
+        ],
+      );
+      if (widget.embedded) return content;
       return PopScope(
         canPop: !c.busy && !c.canRetry,
         child: Scaffold(
           appBar: AppBar(title: const Text('My gym')),
-          body: SafeArea(
-            child: AppContent(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  const AppPageHeader(
-                    title: 'Equipment at your gym',
-                    subtitle: 'Choose a location to load its saved equipment. Your confirmations stay on this device and work offline.',
-                  ),
-                  if (c.error != null) ...[
-                    AppNotice(text: c.error!, warning: true),
-                    if (c.canRetry)
-                      TextButton(
-                        onPressed: c.retry,
-                        child: const Text('Retry save'),
-                      ),
-                    TextButton(
-                      onPressed: c.busy ? null : c.discardPendingAndReload,
-                      child: const Text('Reload saved gyms'),
-                    ),
-                  ],
-                  if (c.busy) const LinearProgressIndicator(),
-                  if (c.saved != null) ...[
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(c.saved!.selectedId),
-                      initialValue: c.saved!.selectedId,
-                      isExpanded: true,
-                      itemHeight: null,
-                      decoration: const InputDecoration(
-                        labelText: 'Selected gym',
-                      ),
-                      hint: const Text('Choose a gym'),
-                      items: [
-                        for (final p in [
-                          if (!c.saved!.profiles.any(
-                            (p) => p.id == homewoodGymId,
-                          ))
-                            homewoodProfile(),
-                          ...c.saved!.profiles,
-                        ])
-                          DropdownMenuItem(value: p.id, child: Text(p.name)),
-                      ],
-                      onChanged: c.locked
-                          ? null
-                          : (id) {
-                              if (id == null || id == c.saved!.selectedId) {
-                                return;
-                              }
-                              c.select(
-                                c.saved!.profiles
-                                        .where((p) => p.id == id)
-                                        .firstOrNull ??
-                                    homewoodProfile(),
-                              );
-                            },
-                    ),
-                    TextButton.icon(
-                      onPressed: c.locked ? null : _addGym,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add another gym'),
-                    ),
-                    if (gym != null) ...[
-                      if (gym.address.isNotEmpty) Text(gym.address),
-                      if (gym.id == homewoodGymId)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: AppNotice(
-                            text: 'Homewood’s public page lists amenities, not individual machines. This is a general checklist, not a verified inventory. Confirm each item you find.',
-                          ),
-                        ),
-                      if (gym.id == homewoodGymId)
-                        const ExpansionTile(
-                          title: Text('Location source'),
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SelectableText(
-                                'CLUB4 official location page · reviewed September 24, 2026\n$homewoodSource\nUsed for name and address only.',
-                              ),
-                            ),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '${gym.availableCategories.length} equipment categories confirmed available',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Text(
-                        'Tap an item to confirm availability or record a correction. Unchecked items are not assumed available.',
-                      ),
-                      const SizedBox(height: 12),
-                      for (final category
-                          in ExerciseCatalogValidator.equipmentIds)
-                        Builder(
-                          builder: (context) {
-                            final item = gym.equipment
-                                .where((e) => e.category == category)
-                                .firstOrNull;
-                            final status =
-                                item?.availability ??
-                                EquipmentAvailability.unknown;
-                            return Card(
-                              child: ListTile(
-                                title: Text(equipmentLabel(category)),
-                                subtitle: Text(
-                                  '${availabilityLabel(status)}${item?.checkedAt == null ? '' : ' · checked ${item!.checkedAt!.toLocal().toIso8601String().substring(0, 10)}'}${item?.notes.isNotEmpty == true ? '\n${item!.notes}' : ''}',
-                                ),
-                                leading: Icon(switch (status) {
-                                  EquipmentAvailability.available =>
-                                    Icons.check_circle_outline,
-                                  EquipmentAvailability.unavailable =>
-                                    Icons.block,
-                                  EquipmentAvailability.unknown =>
-                                    Icons.help_outline,
-                                }),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: c.locked ? null : () => _edit(category),
-                              ),
-                            );
-                          },
-                        ),
-                      const AppNotice(
-                        text: 'Availability records do not set weights or approve exercises. Use Equipment and starting loads in Training setup to verify your exact setup.',
-                      ),
-                      TextButton(
-                        onPressed: c.locked ? null : c.clearSelection,
-                        child: const Text('Clear selected gym'),
-                      ),
-                    ],
-                  ],
-                ],
-              ),
-            ),
-          ),
+          body: SafeArea(child: AppContent(child: content)),
         ),
       );
     },

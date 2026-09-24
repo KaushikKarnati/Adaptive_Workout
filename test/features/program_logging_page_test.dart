@@ -39,6 +39,58 @@ Future<void> _configureIdentity(
 }
 
 void main() {
+  testWidgets(
+    'inline history preserves draft, reloads corrections and filters',
+    (tester) async {
+      final repo = FakeProgramLogRepository();
+      final c = ProgramLogController(repo);
+      await c.start('monday');
+      await c.record(entry());
+      await c.finish(endEarly: true);
+      final saved = c.selected!;
+      await c.start('friday');
+      final draft = c.selected!;
+      c.dispose();
+      final driver = FakeHapticsDriver();
+      final haptics = AppHaptics(driver: driver);
+      await haptics.load();
+      addTearDown(haptics.dispose);
+      await tester.pumpWidget(_withHaptics(repo, haptics));
+      await tester.pumpAndSettle();
+      expect(find.text('Friday'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('workout_history_view')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('history_search')), 'Upper');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('workout_log_view')));
+      await tester.pumpAndSettle();
+      expect(find.text('Friday'), findsOneWidget);
+      expect(repo.logs[draft.id], same(draft));
+      expect(driver.events, ['selection', 'selection']);
+      await tester.tap(find.byKey(const Key('workout_history_view')));
+      await tester.pumpAndSettle();
+      expect(find.text('Upper'), findsOneWidget);
+      repo.logs[saved.id] = saved.record(entry(load: 40000000));
+      await tester.ensureVisible(
+        find.byKey(Key('history_workout_${saved.id}')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('history_workout_${saved.id}')));
+      await tester.pumpAndSettle();
+      expect(find.text('Monday'), findsOneWidget);
+      expect(
+        Navigator.of(tester.element(find.byType(ProgramLoggingPage))).canPop(),
+        isFalse,
+      );
+      await tester.ensureVisible(
+        find.byKey(const Key('incline_dumbbell_press_false_1_both')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('40 lb (perDumbbell)'), findsOneWidget);
+      expect(driver.events, ['selection', 'selection', 'selection']);
+    },
+  );
+
   testWidgets('new workout feedback waits for the persisted reload', (
     tester,
   ) async {
@@ -103,15 +155,26 @@ void main() {
       await c.start('monday');
       await c.record(entry());
       await c.finish(endEarly: true);
-      final id = c.selected!.id;
       c.dispose();
       await tester.pumpWidget(_withHaptics(repo, haptics));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('History'));
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-        find.byKey(Key('delete_workout_$id')),
+        find.widgetWithText(ListTile, 'Upper chest + lats'),
         300,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
-      await tester.tap(find.byKey(Key('delete_workout_$id')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ListTile, 'Upper chest + lats'));
+      await tester.pumpAndSettle();
+      driver.events.clear();
+      await tester.tap(find.byKey(const Key('delete_selected_workout')));
       await tester.pumpAndSettle();
       expect(find.textContaining('including corrections'), findsOneWidget);
       expect(driver.events, ['warning']);
@@ -119,18 +182,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(repo.logs, hasLength(1));
       expect(driver.events, ['warning']);
-      await tester.tap(find.byKey(Key('delete_workout_$id')));
+      await tester.tap(find.byKey(const Key('delete_selected_workout')));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete workout'));
       await tester.pumpAndSettle();
       expect(repo.logs, isEmpty);
-      expect(find.byKey(Key('delete_workout_$id')), findsNothing);
+      expect(find.byKey(const Key('delete_selected_workout')), findsNothing);
       expect(find.text('Workout deleted'), findsOneWidget);
       expect(driver.events, ['warning', 'warning', 'success']);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(_withHaptics(repo, haptics));
       await tester.pumpAndSettle();
-      expect(find.byKey(Key('delete_workout_$id')), findsNothing);
+      expect(find.byKey(const Key('delete_selected_workout')), findsNothing);
       expect(driver.events, ['warning', 'warning', 'success']);
     },
   );
@@ -161,7 +224,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.logs, isEmpty);
     expect(driver.events, ['warning', 'error', 'success']);
-    expect(find.text('Workout log'), findsOneWidget);
+    expect(find.text('Workout'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -332,6 +395,12 @@ void main() {
       );
       expect(find.textContaining('Unconfirmed entry:'), findsOneWidget);
       expect(driver.events, ['error']);
+      expect(
+        tester
+            .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
+            .onSelectionChanged,
+        isNull,
+      );
       repo.failWrite = false;
       await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
@@ -408,6 +477,8 @@ void main() {
       await haptics.load();
       addTearDown(haptics.dispose);
       await tester.pumpWidget(_withHaptics(repo, haptics));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Start Wednesday'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Start Wednesday'));
       await tester.pumpAndSettle();

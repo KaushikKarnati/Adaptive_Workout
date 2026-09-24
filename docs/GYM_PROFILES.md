@@ -1,7 +1,7 @@
 # Local gym equipment profiles
 
 Authorized September 24, 2026. This slice adds an offline location inventory under
-Training setup → My gym, using the existing SQLite dependency.
+Settings → My gym, using the existing SQLite dependency.
 
 Select CLUB4 Homewood or add a named location. Selection reloads that location's
 saved availability checklist. Switching or clearing selection preserves every

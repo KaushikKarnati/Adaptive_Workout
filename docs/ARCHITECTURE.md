@@ -206,9 +206,13 @@ Schema-1 upgrades preserve existing payloads. See [ADR 0017](decisions/0017-dele
 
 ## Primary app entry
 
-The normal app entry is `WorkoutHomePage`, with direct access to the manual
-workout log, approved program preview, training setup and appearance preference.
-The program preview also links to logging and setup. Practice screens remain
+The normal app entry is `WorkoutHomePage`, a persistent two-tab shell: Workout
+and Settings. Workout contains the manual logger and inline searchable history
+and graphs; opening a saved record selects it in the same logger. Settings has
+lazily created, state-preserving disclosures for appearance and haptics, program,
+training setup and gym inventory. Embedded content does not push extra screens;
+small editing/confirmation dialogs remain local to the two destinations. Switching
+tabs retains workout state and unfinished settings fields. Practice screens remain
 available through explicit development/test injection only; their repositories
 and saved data are preserved. Hiding practice does not delete it.
 
@@ -218,16 +222,30 @@ The presentation-only `SessionTimerPanel` derives total elapsed time from existi
 saved start/completion timestamps. `RestCountdown` stores an in-memory deadline
 selected explicitly from the displayed prescription block. UI refresh ticks do
 not accumulate time or mutate workout data; resume recomputes from timestamps.
-The countdown is cleared on workout selection changes/completion and page exit.
+The countdown is cleared on workout selection changes/completion and page disposal.
+Switching tabs retains its deadline; hidden/background views do not tick or emit
+completion feedback. Returning updates the display without a catch-up haptic.
 Neither timer participates in deterministic training rules. See UI_DESIGN.md
 for background, restart and notification limitations.
 
 ## Gym location inventories
 
-Training setup links to local gym profiles with explicit equipment availability,
+Settings contains local gym profiles with explicit equipment availability,
 per-location corrections and offline selection persistence. The pure gym domain
 is separate from exact training setups and does not authorize recommendations.
 `GymProfileController` validates save acknowledgements; the separate schema-1
 `gym_profiles.sqlite` adapter uses transactional compare-and-save. Homewood has
 location metadata only, with all equipment initially unknown. See
 [Gym profiles](GYM_PROFILES.md) for provenance, boundaries and validation.
+
+### Manual history presentation
+
+`WorkoutHistoryPage` loads profile-scoped manual logs through
+`ProgramLogController` and `ProgramLogRepository`. Pure-Dart descriptive
+projections in `domain/history/workout_history.dart` filter finished logs and
+partition comparable recorded sets. Graphs use Flutter painting with accessible
+exact-value disclosure; no additional dependency or schema is introduced.
+The embedded history callback reloads and selects a saved record in the existing
+manual logger. Returning to history refreshes its repository view while retaining
+filters. Standalone history retains initial-session routing for explicit test or
+development injection only. Recommendations and their evidence adapters are unaffected.

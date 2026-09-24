@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../ui/app_haptics.dart';
+
 /// Presentation timing only; never feeds workout or progression policies.
 Duration sessionElapsed(DateTime start, DateTime? end, DateTime now) {
   final elapsed = (end ?? now).difference(start);
@@ -45,11 +47,13 @@ class SessionTimerPanel extends StatefulWidget {
     required this.start,
     required this.end,
     required this.rest,
+    this.active = true,
     this.now = DateTime.now,
   });
   final DateTime start;
   final DateTime? end;
   final RestCountdown rest;
+  final bool active;
   final DateTime Function() now;
 
   @override
@@ -59,18 +63,41 @@ class SessionTimerPanel extends StatefulWidget {
 class _SessionTimerPanelState extends State<SessionTimerPanel>
     with WidgetsBindingObserver {
   Timer? _ticker;
+  bool _completionArmed = false;
+  bool _foreground = true;
+  bool get _visible => widget.active && _foreground;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    widget.rest.addListener(_restChanged);
+    _armCompletion();
     _syncTicker();
   }
 
+  void _armCompletion() {
+    _completionArmed =
+        _visible &&
+        widget.end == null &&
+        widget.rest.started &&
+        widget.rest.remaining(widget.now()) > Duration.zero;
+  }
+
+  void _restChanged() => _armCompletion();
+
   void _syncTicker() {
     _ticker?.cancel();
-    if (widget.end == null) {
+    if (_visible && widget.end == null) {
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        if (_completionArmed &&
+            widget.rest.remaining(widget.now()) == Duration.zero) {
+          _completionArmed = false;
+          AppHaptics.of(context).success();
+        }
+        setState(() {});
       });
     }
   }
@@ -78,12 +105,23 @@ class _SessionTimerPanelState extends State<SessionTimerPanel>
   @override
   void didUpdateWidget(SessionTimerPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.end != widget.end) _syncTicker();
+    if (oldWidget.rest != widget.rest) {
+      oldWidget.rest.removeListener(_restChanged);
+      widget.rest.addListener(_restChanged);
+    }
+    if (oldWidget.end != widget.end ||
+        oldWidget.active != widget.active ||
+        oldWidget.rest != widget.rest) {
+      _armCompletion();
+      _syncTicker();
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    _foreground = state == AppLifecycleState.resumed;
+    _armCompletion();
+    if (_foreground) {
       setState(() {});
       _syncTicker();
     } else {
@@ -94,6 +132,7 @@ class _SessionTimerPanelState extends State<SessionTimerPanel>
   @override
   void dispose() {
     _ticker?.cancel();
+    widget.rest.removeListener(_restChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -127,7 +166,10 @@ class _SessionTimerPanelState extends State<SessionTimerPanel>
                     key: const Key('rest_remaining'),
                   ),
                   TextButton(
-                    onPressed: widget.rest.clear,
+                    onPressed: () {
+                      widget.rest.clear();
+                      AppHaptics.of(context).selection();
+                    },
                     child: const Text('Clear rest'),
                   ),
                 ],

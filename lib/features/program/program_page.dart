@@ -7,92 +7,99 @@ import '../setup/training_setup_page.dart';
 import 'program_logging_page.dart';
 
 class ProgramPage extends StatelessWidget {
-  const ProgramPage({super.key});
+  const ProgramPage({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Program')),
-      body: SafeArea(
-        child: AppContent(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-            children: [
-              const AppPageHeader(
-                eyebrow: 'Approved plan · Preview',
-                title: 'Your five-day program',
-                subtitle: 'Working sets target 2–3 reps in reserve.',
+    final content = ListView(
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
+      padding: embedded
+          ? EdgeInsets.zero
+          : const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      children: [
+        if (embedded)
+          const Text(
+            'Five sessions · Working sets target 2–3 reps in reserve.',
+          ),
+        if (!embedded) ...[
+          const AppPageHeader(
+            eyebrow: 'Approved plan · Preview',
+            title: 'Your five-day program',
+            subtitle: 'Working sets target 2–3 reps in reserve.',
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ProgramLoggingPage(),
               ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ProgramLoggingPage(),
+            ),
+            child: const Text('Log workouts / history'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TrainingSetupPage(),
+              ),
+            ),
+            child: const Text('Training setup / starting loads'),
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (embedded) const SizedBox(height: 16),
+        const AppNotice(
+          text: 'Manual logging is available. Weight recommendations still require verified equipment, baselines and resolved warm-up setups.',
+        ),
+        const SizedBox(height: 28),
+        const AppSectionHeader(title: 'Sessions'),
+        const SizedBox(height: 12),
+        for (final (index, session) in ownerProgram.indexed) ...[
+          _SessionCard(session: session, number: index + 1),
+          const SizedBox(height: 12),
+        ],
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  CupertinoIcons.leaf_arrow_circlepath,
+                  color: colors.primary,
+                ),
+                const SizedBox(height: 16),
+                Text('Thursday · Recovery', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Text(
+                  'No lifting. Easy walking and optional light mobility. Your supplied plan includes 8,000–10,000 total steps.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
-                child: const Text('Log workouts / history'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const TrainingSetupPage(),
-                  ),
-                ),
-                child: const Text('Training setup / starting loads'),
-              ),
-              const SizedBox(height: 20),
-              const AppNotice(
-                text: 'Manual logging is available. Weight recommendations still require verified equipment, baselines and resolved warm-up setups.',
-              ),
-              const SizedBox(height: 28),
-              const AppSectionHeader(title: 'Sessions'),
-              const SizedBox(height: 12),
-              for (final (index, session) in ownerProgram.indexed) ...[
-                _SessionCard(session: session, number: index + 1),
-                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        CupertinoIcons.leaf_arrow_circlepath,
-                        color: colors.primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Thursday · Recovery',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No lifting. Easy walking and optional light mobility. Your supplied plan includes 8,000–10,000 total steps.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'These day labels preserve your plan; automatic rescheduling is not enabled.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 20),
+        Text(
+          'These day labels preserve your plan; automatic rescheduling is not enabled.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+    if (embedded) return content;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Program')),
+      body: SafeArea(child: AppContent(child: content)),
     );
   }
 }

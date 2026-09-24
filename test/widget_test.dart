@@ -1,5 +1,5 @@
 import 'package:adaptive_workout/features/home/workout_home_page.dart';
-import 'package:adaptive_workout/features/program/program_page.dart';
+import 'package:adaptive_workout/features/settings/settings_page.dart';
 import 'package:adaptive_workout/features/practice/practice_page.dart';
 import 'package:adaptive_workout/main.dart';
 import 'package:adaptive_workout/features/workout/sample_workout_flow.dart';
@@ -7,26 +7,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('default app opens Training home without a practice route', (
+  testWidgets('default app opens Workout with exactly two main destinations', (
     tester,
   ) async {
     await tester.pumpWidget(const AdaptiveWorkoutApp());
     await tester.pumpAndSettle();
     expect(find.byType(WorkoutHomePage), findsOneWidget);
-    expect(find.text('Training'), findsOneWidget);
+    expect(find.byKey(const Key('tab_workout')), findsOneWidget);
+    expect(find.byKey(const Key('tab_settings')), findsOneWidget);
     expect(find.byType(PracticeBootstrap), findsNothing);
-    expect(find.byKey(const Key('home_practice')), findsNothing);
-    await tester.scrollUntilVisible(find.byKey(const Key('home_program')), 250);
+    await tester.tap(find.byKey(const Key('tab_settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('home_program')));
-    await tester.pumpAndSettle();
-    expect(find.byType(ProgramPage), findsOneWidget);
-    expect(find.text('Your five-day program'), findsOneWidget);
-    expect(find.text('Approved plan · Preview'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(find.byType(WorkoutHomePage), findsOneWidget);
-    expect(find.byType(PracticeBootstrap), findsNothing);
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(find.byKey(const Key('settings_program')), findsOneWidget);
     expect(find.byKey(const Key('home_practice')), findsNothing);
     expect(tester.takeException(), isNull);
   });

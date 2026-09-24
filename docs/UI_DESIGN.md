@@ -1,6 +1,6 @@
 # Interface design
 
-The interface uses a restrained blue accent, quiet surfaces, clear typography and generous spacing. The Training home prioritizes manual workout logging, followed by the approved program and training setup. Practice is hidden from normal navigation; its code and records are preserved for explicit development/test injection. Future screens should extend these patterns using real application state; do not add invented activity, progress, readiness or recommendation metrics.
+The interface uses a restrained blue accent, quiet surfaces, clear typography and generous spacing. The app has two persistent main screens: **Workout** for logging, history and graphs, and **Settings** for appearance, haptics, the approved program, training setup and gym inventory. Settings details expand inline; workout records open within Workout. Small editing and confirmation dialogs do not add destinations. The labeled bottom tab bar keeps both screens available and preserves context, following [Apple HIG: Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars). Practice is hidden from normal navigation; its code and records are preserved for explicit development/test injection. Future screens should extend these patterns using real application state; do not add invented activity, progress, readiness or recommendation metrics.
 
 ## Appearance
 
@@ -24,13 +24,13 @@ Review future screens at narrow widths, large text sizes, both appearances and w
 
 Use short, semantic system patterns following [Apple HIG: Playing haptics](https://developer.apple.com/design/human-interface-guidelines/playing-haptics). `AppHaptics` is presentation-only and sits above navigation so dialogs share the same preference. An iOS method channel invokes UIKit's selection, light impact and notification feedback generators; no custom vibration, audio or new dependency is used.
 
-- Selection: changed appearance, training-day/exclusion choices and equipment/set selectors.
-- Light impact: a new workout successfully created and reloaded.
-- Success: acknowledged set/correction, setup/preferences, completed workout or deletion.
+- Selection: changed primary tabs, Log/History mode, history/graph filters and metrics, appearance, training-day/exclusion choices and equipment/set selectors, acknowledged gym selection, and clearing a rest timer.
+- Light impact: a new workout successfully created and reloaded, or explicitly starting a rest countdown.
+- Success: acknowledged set/correction, setup/preferences, gym edits, completed workout or deletion, and a rest countdown completing while its screen is visible and the app is active.
 - Warning: destructive/early-finish confirmation and a newly selected pain-affected status.
 - Error: invalid submission or failed initiated save. Retrying uses the final acknowledged outcome, never the original tap.
 
-Loading, ordinary navigation, typing, scrolling, canceling and reselecting the current value stay quiet. Do not attach haptics to build methods or general controller listeners. Feedback failures never block an action, and visual confirmations/errors remain the source of truth.
+Loading, ordinary record navigation, typing, scrolling, canceling and reselecting the current value stay quiet. Primary tab and mode changes use a single selection cue; no blanket tap vibration is attached to screens. Do not attach haptics to build methods or general controller listeners. Feedback failures never block an action, and visual confirmations/errors remain the source of truth.
 
 The **Haptic feedback** switch under **Appearance & feedback** is on by default and saved in device-local UserDefaults. Muting it suppresses app cues; the switch itself uses controlled feedback rather than an adaptive control that emits an extra independent vibration. The native bridge also checks mute and foreground state before playing. UIKit determines whether hardware/system settings permit a cue. Unsupported platforms stay quiet. `PrivacyInfo.xcprivacy` declares app-only UserDefaults usage (`CA92.1`); no workout information enters this preference.
 
@@ -67,6 +67,65 @@ For supersets start it after both exercises; for per-side work after both sides.
 Starting another countdown replaces the previous one. The countdown rounds up
 remaining seconds, catches up on foreground resume, and shows “Rest complete” at
 zero. It does not automatically start, advance sets, or authorize continuing.
-Clear rest, leaving the workout screen, app termination, switching workouts and
-successful completion clear the countdown. No background alarm or notification
+Clear rest, disposing the workout screen, app termination, switching workouts and
+successful completion clear the countdown. Switching between the two primary tabs
+or viewing history retains its deadline. A visible foreground completion cues once;
+a countdown that elapsed while hidden/backgrounded stays silent on return. No background alarm or notification
 is scheduled. Timer display and controls use no new dependency or workout writes.
+
+## History and graphs
+
+Workout contains inline History and Graphs, with a shared search and rolling
+30/90/365-day or all-time filter. History groups finished manual sessions by local
+start date, newest first, and opens a saved record within the same Workout screen.
+Reopening history reloads the repository so corrections and deletions update both
+views while preserving its filters and scroll position.
+Drafts and practice records are excluded. Early finishes remain clearly labeled.
+
+Graphs display individual recorded working sets, oldest to newest, with load/reps
+selection and an expandable exact-value list that opens the source workout.
+The horizontal axis is set order, not elapsed time. Only positive-repetition sets
+explicitly marked valid are plotted; warm-ups, skips, unknown/invalid/pain entries
+and missing values are excluded. Series stay separate by program version,
+template slot, variant, exact setup, load convention and side. Bodyweight shows
+reps; assistance is labeled as support, never strength gained. No estimated 1RM,
+volume, readiness or recommendations are calculated. Zero load is supported;
+one-point/constant series and empty/error states are explicit. Search matches
+workout titles, prescribed exercise names, recorded variants and setups.
+
+Reference: https://github.com/brandonp2412/Flexify (reviewed September 24, 2026),
+particularly history_page, history_list, graphs_page and strength_page. Adapted
+interaction concepts: searchable date grouping, exercise graph cards, metric
+selection and history drill-down. Implementation is written for this app's
+repository/controller and theme; no Flexify database, chart package, assets or
+training algorithms are imported. Upstream MIT notice is retained in
+`docs/references/FLEXIFY_LICENSE.md` for provenance.
+
+History/graphs validation on September 24: formatting, static analysis and all
+382 local tests passed. Tests cover profile/date/search filtering, graph data
+exclusions, correction replacement, distinct setup/side/load-convention series,
+source-workout navigation, read retry and 320-point layouts at 2x text in both
+themes. Synthetic history and graph screenshots were rendered and reviewed in
+Light and Dark (`CAPTURE_HISTORY=true`, macOS font fixture). The signed release
+build was installed without uninstalling and launched on the physical iPhone;
+the running app process was confirmed. Interactive graph behavior on the phone
+and VoiceOver acceptance remain unverified.
+
+## Two-screen consolidation validation
+
+September 24, 2026: the app now exposes only Workout and Settings as primary
+screens. All 395 local tests, formatting and static analysis pass. Regression
+coverage includes retained workouts and unsaved setup fields across tab/disclosure
+changes, inline history corrections, pending-write locks, changed-only and muted
+feedback, gym save acknowledgements, and once-only foreground rest completion.
+
+The native haptics integration test and both appearance integration tests passed
+on the physical iPhone. Appearance captures use isolated workout/setup fixtures;
+production workout records are not read or changed by these UI tests. Six local
+captures cover Workout, Settings and its expanded appearance section in both
+modes. Four fresh physical-iPhone captures of the two main screens were also
+reviewed in Light and Dark. Screenshots are under ignored `build/ui-review/`.
+Perceived haptic strength/comfort and full VoiceOver acceptance remain hands-on
+checks; automated success verifies semantic requests and preference behavior.
+The signed regular release build was then installed without uninstalling and
+launched successfully; its running iPhone process was confirmed.

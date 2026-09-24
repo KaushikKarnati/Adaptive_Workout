@@ -1,5 +1,9 @@
 import 'package:adaptive_workout/features/program/session_timer.dart';
+import 'package:adaptive_workout/ui/app_haptics.dart';
 import 'package:flutter/material.dart';
+
+import '../support/fake_haptics_driver.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -89,6 +93,75 @@ void main() {
     expect(find.text('Total time  02:10'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets(
+    'rest completion cues once and stays quiet while hidden or backgrounded',
+    (tester) async {
+      var now = start;
+      final rest = RestCountdown();
+      final driver = FakeHapticsDriver();
+      final haptics = AppHaptics(driver: driver);
+      await haptics.load();
+      addTearDown(rest.dispose);
+      addTearDown(haptics.dispose);
+      Widget panel({bool active = true}) => AppHapticsScope(
+        haptics: haptics,
+        child: MaterialApp(
+          home: Scaffold(
+            bottomNavigationBar: SessionTimerPanel(
+              start: start,
+              end: null,
+              rest: rest,
+              now: () => now,
+              active: active,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(panel());
+      rest.start(2, now);
+      now = now.add(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 1));
+      expect(driver.events, ['success']);
+      await tester.pump(const Duration(seconds: 3));
+      expect(driver.events, ['success']);
+      await tester.tap(find.text('Clear rest'));
+      await tester.pump();
+      expect(driver.events, ['success', 'selection']);
+      driver.events.clear();
+
+      rest.start(2, now);
+      await tester.pumpWidget(panel(active: false));
+      now = now.add(const Duration(seconds: 5));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpWidget(panel());
+      await tester.pump(const Duration(seconds: 1));
+      expect(driver.events, isEmpty);
+
+      rest.start(2, now);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      now = now.add(const Duration(seconds: 5));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(const Duration(seconds: 1));
+      expect(driver.events, isEmpty);
+
+      // Returning before expiry still permits the eventual visible completion.
+      rest.start(5, now);
+      await tester.pumpWidget(panel(active: false));
+      now = now.add(const Duration(seconds: 1));
+      await tester.pumpWidget(panel());
+      now = now.add(const Duration(seconds: 4));
+      await tester.pump(const Duration(seconds: 1));
+      expect(driver.events, ['success']);
+      driver.events.clear();
+      await haptics.setEnabled(false);
+      rest.start(1, now);
+      now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(driver.events, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('timer wraps at narrow width and large text', (tester) async {
     tester.view.physicalSize = const Size(320, 700);
     tester.view.devicePixelRatio = 1;
