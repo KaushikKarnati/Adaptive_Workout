@@ -11,7 +11,7 @@ struct SetEditor: View {
   let save: (ProgramSet) -> Void
   @Environment(\.dismiss) private var dismiss
   @State private var variant = ""
-  @State private var setup = ""
+  @State private var legacySetup = ""
   @State private var convention = ""
   @State private var load = ""
   @State private var reps = ""
@@ -35,6 +35,11 @@ struct SetEditor: View {
                 set: { value in
                   if variant != value {
                     variant = value
+                    legacySetup = ""
+                    convention =
+                      manualLoadConventions(variant: value).count == 1
+                      ? manualLoadConventions(variant: value)[0].rawValue : ""
+                    load = ""
                     cue(.selection)
                   }
                 })
@@ -45,7 +50,18 @@ struct SetEditor: View {
               }
             }
           }
-          TextField("Exact machine / setup", text: $setup).accessibilityIdentifier("set_setup")
+          if let previous = log.previousSet(
+            slot: exercise.id, index: index, side: side, warmup: warmup)
+          {
+            Button("Copy previous set") {
+              if variant != previous.variant { legacySetup = "" }
+              variant = previous.variant
+              convention = previous.convention.rawValue
+              load = previous.load.map(formatPounds) ?? ""
+              reps = previous.reps.map(String.init) ?? ""
+              cue(.selection)
+            }.accessibilityIdentifier("copy_previous_set")
+          }
           Picker(
             "Load measurement",
             selection: Binding(
@@ -58,7 +74,8 @@ struct SetEditor: View {
               })
           ) {
             Text("Choose measurement").tag("")
-            ForEach(LoadConvention.allCases, id: \.rawValue) {
+            ForEach(variant.isEmpty ? [] : manualLoadConventions(variant: variant), id: \.rawValue)
+            {
               Text(conventionLabel($0)).tag($0.rawValue)
             }
           }.accessibilityIdentifier("set_convention")
@@ -85,7 +102,7 @@ struct SetEditor: View {
           }.accessibilityIdentifier("set_validity")
         } footer: {
           Text(
-            "Use a setup label you can recognize next time. Logging a set does not verify a starting load."
+            "Copy fills weight, reps, variation and load measurement. Review each set before saving. Logging does not verify a starting load."
           )
         }
         if let error { Section { Text(error).foregroundColor(.red) } }
@@ -103,8 +120,11 @@ struct SetEditor: View {
           $0.slot == exercise.id && $0.index == index && $0.side == side && $0.warmup == warmup
         }
         variant = set?.variant ?? (exercise.alternatives.isEmpty ? exercise.id : "")
-        setup = set?.setup ?? ""
-        convention = set?.convention.rawValue ?? ""
+        legacySetup = set?.setup ?? ""
+        convention =
+          set?.convention.rawValue
+          ?? (manualLoadConventions(variant: variant).count == 1
+            ? manualLoadConventions(variant: variant)[0].rawValue : "")
         load = set?.load.map(formatPounds) ?? ""
         reps = set?.reps.map(String.init) ?? ""
         rir = set?.rir.map(String.init) ?? ""
@@ -126,7 +146,7 @@ struct SetEditor: View {
       else { throw LoggingException("invalid_actuals") }
       let set = ProgramSet(
         slot: exercise.id, index: index, side: side, variant: variant,
-        setup: setup.trimmingCharacters(in: .whitespacesAndNewlines), convention: measurement,
+        setup: legacySetup, convention: measurement,
         load: skip || measurement == .bodyweight ? nil : try parsePounds(load),
         reps: repetitions, rir: effort, validity: skip ? .unknown : validity,
         warmup: warmup, skipped: skip)
@@ -134,7 +154,8 @@ struct SetEditor: View {
       save(set)
       dismiss()
     } catch {
-      self.error = "Check the variation, setup, load measurement and numbers. RIR may be blank."
+      self.error =
+        "Choose a variation and load measurement, then enter valid weight and reps. RIR may be blank."
       cue(.error)
     }
   }

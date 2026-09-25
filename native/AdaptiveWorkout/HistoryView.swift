@@ -43,7 +43,7 @@ struct HistoryView: View {
           VStack(alignment: .leading, spacing: 10) {
             Text(item.name).font(.headline)
             Text(
-              "\(item.key.variant.replacingOccurrences(of: "_", with: " ")) · \(item.key.setup) · \(item.key.side.rawValue)"
+              "\(item.key.variant.replacingOccurrences(of: "_", with: " ")) · \(item.key.side.rawValue)"
             ).font(.subheadline).foregroundColor(.secondary)
             Text(conventionLabel(item.key.convention)).font(.caption)
             if item.key.convention == .assistance {

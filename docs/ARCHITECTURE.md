@@ -266,3 +266,25 @@ unverified. The Flutter reference is retained in Git history, not as a required
 runtime for the maintained app.
 
 Independent appearance-store failures are reported with a retry while workout storage remains usable. Pending manual actions expose their submitted values separately from committed records until exact reload acknowledgement succeeds.
+
+## September 25 manual workflow and reference content
+
+`ManualWorkoutFlow` shares load-option semantics with the manual validator and
+orders explicit working targets by block, round, exercise and side. Views render
+the first unrecorded target; copying earlier actuals only prefills an unsaved form.
+Manual setup labels may now be empty under owner authorization. This does not
+relax verified setup or generated-recommendation contracts. Unknown manual setup
+is session-scoped in descriptive chart groups. Canonical legacy payloads remain
+unchanged. `ProgramLogController` deselects only newly acknowledged completions,
+including retries, retaining completed-history correction behavior.
+
+`WorkoutNotifications` owns native notification effects on the main actor and
+saves independent local preferences. `WorkoutReminderSchedule` validates explicit
+calendar inputs outside views. Core logging never requires notification permission.
+No notification contains actual exercise/health measurements; test fixtures disable
+system notification mutations. Local alerts remain subject to iOS delivery policy.
+
+`WgerReferenceRepository` verifies a separately bundled, pinned presentation-only
+name/attribution index. It does not expose `ExerciseCatalog` or supply exercise
+selection, training rules or program bindings. The broader source index does not
+replace the reviewed-catalog pipeline or activate any pending review gate.

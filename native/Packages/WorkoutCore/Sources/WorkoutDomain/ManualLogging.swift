@@ -188,19 +188,14 @@ public struct ProgramLog: Equatable, Sendable, Identifiable {
       e.eachSide ? set.side != .both : set.side == .both
     else { throw LoggingException("invalid_set_identity") }
     guard e.alternatives.isEmpty ? set.variant == e.id : e.alternatives.contains(set.variant),
-      !set.setup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      set.setup.isEmpty || !set.setup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
       set.setup.utf16.count <= 120
     else {
       throw LoggingException(set.skipped ? "invalid_skip" : "invalid_actuals")
     }
-    let bodyweight = ["unassisted_pull_up", "hanging_knee_raise", "ab_wheel_rollout"].contains(
-      set.variant)
-    let dumbbell = ["incline_dumbbell_press", "dumbbell_shoulder_press"].contains(set.variant)
-    let assisted = set.variant == "assisted_machine_pull_up"
-    guard (set.convention == .bodyweight) == bodyweight,
-      (set.convention == .perDumbbell) == dumbbell,
-      (set.convention == .assistance) == assisted
-    else { throw LoggingException("invalid_load_convention") }
+    guard manualLoadConventions(variant: set.variant).contains(set.convention) else {
+      throw LoggingException("invalid_load_convention")
+    }
     if set.skipped {
       guard set.load == nil, set.reps == nil, set.rir == nil, set.validity == .unknown else {
         throw LoggingException("invalid_skip")

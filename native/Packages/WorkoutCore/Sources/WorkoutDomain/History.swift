@@ -22,7 +22,7 @@ public struct ExerciseSeriesKey: Hashable, Sendable {
     lhs.version == rhs.version && lhs.program == rhs.program && lhs.slot == rhs.slot
       && lhs.variant == rhs.variant
       && ManualJSON.bytesEqual(lhs.setup, rhs.setup) && lhs.convention == rhs.convention
-      && lhs.side == rhs.side
+      && lhs.side == rhs.side && lhs.unknownSetupSession == rhs.unknownSetupSession
   }
   public func hash(into hasher: inout Hasher) {
     hasher.combine(version)
@@ -32,6 +32,7 @@ public struct ExerciseSeriesKey: Hashable, Sendable {
     for byte in setup.utf8 { hasher.combine(byte) }
     hasher.combine(convention)
     hasher.combine(side)
+    hasher.combine(unknownSetupSession)
   }
   public let version: String
   public let program: String
@@ -40,6 +41,7 @@ public struct ExerciseSeriesKey: Hashable, Sendable {
   public let setup: String
   public let convention: LoadConvention
   public let side: LoggedSide
+  public let unknownSetupSession: String?
 }
 public struct HistoryPoint: Equatable, Sendable, Identifiable {
   public let log: ProgramLog
@@ -70,7 +72,8 @@ public func exerciseHistory(_ logs: [ProgramLog]) -> [ExerciseHistorySeries] {
       else { continue }
       let key = ExerciseSeriesKey(
         version: log.programVersion, program: log.programId, slot: set.slot,
-        variant: set.variant, setup: set.setup, convention: set.convention, side: set.side)
+        variant: set.variant, setup: set.setup, convention: set.convention, side: set.side,
+        unknownSetupSession: set.setup.isEmpty ? log.id : nil)
       if groups[key] == nil {
         groups[key] = ExerciseHistorySeries(key: key, name: exercise.name, points: [])
         order.append(key)

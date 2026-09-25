@@ -55,6 +55,24 @@ or treat failure-injection rollback as physical power-loss recovery.
   implementation or synthetic fixture does not count as the three-month outcome
   study or approval of real prescriptions.
 
+Additional native coverage added during the September 25 full test:
+
+- `SetEntryCoverageTests`: supported load conventions, bodyweight/assistance,
+  repeat-prefill, exact decimals and rejected/corrected form inputs.
+- `LifecycleCoverageTests`: rest retention, cancel-then-confirm workout switching,
+  deletion cancellation, and custom gym persistence.
+- `VisualLayoutTests`: dark appearance and scrollable logging, also executed on
+  an isolated smaller simulator with accessibility-large text.
+- `NativeNotificationTests`: hosted-iOS-only tests of permission outcomes,
+  scheduling failures/retries, cancellation races, persistence and fixture
+  isolation using an injected notification client. These tests do not deliver
+  alerts and are conditionally excluded from the Mac package runner.
+
+The full-test findings and exact run boundaries are in
+[September 25 test report](TEST_REPORT_2026_09_25.md). A passing mock notification
+test does not establish locked-phone delivery. A passing large-text save flow
+does not establish full accessibility acceptance.
+
 Every algorithmic rule needs normal, boundary, invalid and missing-data cases;
 every bug fix needs a regression case. Unit tests establish contracts, while
 interaction tests establish the exercised UI behavior. Screenshot presence alone

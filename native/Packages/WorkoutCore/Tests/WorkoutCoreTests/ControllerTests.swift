@@ -186,10 +186,11 @@ final class ControllerTests: XCTestCase {
     XCTAssertNil(controller.pendingChange)
     XCTAssertTrue(
       ManualJSON.bytesEqual(
-        try XCTUnwrap(controller.selected).encodedJSON(), pendingFinish.log.encodedJSON()))
+        try XCTUnwrap(controller.logs.first).encodedJSON(), pendingFinish.log.encodedJSON()))
 
     repository.failNext(.acknowledgement)
-    let deleted = await controller.delete(try XCTUnwrap(controller.selected))
+    XCTAssertNil(controller.selectedID)
+    let deleted = await controller.delete(try XCTUnwrap(controller.logs.first))
     XCTAssertFalse(deleted)
     XCTAssertEqual(controller.pendingChange?.kind, .deletion)
     XCTAssertEqual(controller.pendingChange?.log.id, pendingStart.log.id)
@@ -223,11 +224,12 @@ final class ControllerTests: XCTestCase {
     XCTAssertFalse(controller.locked)
     XCTAssertEqual(controller.logs.count, 1)
     XCTAssertEqual(controller.selected?.programId, "monday")
-    guard let log = controller.selected else { return XCTFail("Missing acknowledged workout") }
+    guard controller.selected != nil else { return XCTFail("Missing acknowledged workout") }
     let finished = await controller.finish(endEarly: true)
     XCTAssertTrue(finished)
-    XCTAssertTrue(controller.selected?.endedEarly == true)
-    let removed = await controller.delete(controller.selected ?? log)
+    XCTAssertNil(controller.selectedID)
+    XCTAssertTrue(controller.logs.first?.endedEarly == true)
+    let removed = await controller.delete(try XCTUnwrap(controller.logs.first))
     XCTAssertTrue(removed)
     XCTAssertTrue(controller.logs.isEmpty)
     XCTAssertNil(controller.selected)

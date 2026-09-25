@@ -11,12 +11,8 @@ final class HistoryNavigationTests: XCTestCase {
     let firstSet = app.buttons["set_incline_dumbbell_press_1_both_false"]
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     firstSet.tap()
-    let setup = app.textFields["set_setup"]
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
-    setup.tap()
-    setup.typeText("History fixture")
-    app.buttons["set_convention"].tap()
-    app.buttons["Pounds per dumbbell"].tap()
+    XCTAssertTrue(app.textFields["set_load"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     app.textFields["set_load"].tap()
     app.textFields["set_load"].typeText("20")
     app.textFields["set_reps"].tap()

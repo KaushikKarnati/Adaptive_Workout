@@ -12,12 +12,8 @@ final class WorkoutFlowTests: XCTestCase {
     let firstSet = app.buttons["set_incline_dumbbell_press_1_both_false"]
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     firstSet.tap()
-    let setup = app.textFields["set_setup"]
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
-    setup.tap()
-    setup.typeText("Fixture dumbbells")
-    app.buttons["set_convention"].tap()
-    app.buttons["Pounds per dumbbell"].tap()
+    XCTAssertTrue(app.textFields["set_load"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     let load = app.textFields["set_load"]
     load.tap()
     load.typeText("20")
@@ -30,6 +26,15 @@ final class WorkoutFlowTests: XCTestCase {
     app.buttons["save_set"].tap()
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     XCTAssertTrue(firstSet.label.contains("20 lb"))
+    let secondSet = app.buttons["set_incline_dumbbell_press_2_both_false"]
+    XCTAssertTrue(secondSet.label.contains("Current set"))
+    secondSet.tap()
+    XCTAssertTrue(app.buttons["copy_previous_set"].waitForExistence(timeout: 5))
+    app.buttons["copy_previous_set"].tap()
+    XCTAssertEqual(app.textFields["set_load"].value as? String, "20")
+    XCTAssertEqual(app.textFields["set_reps"].value as? String, "8")
+    XCTAssertFalse(app.textFields["set_setup"].exists)
+    app.buttons["Cancel"].tap()
     app.tabBars.buttons["Settings"].tap()
     app.tabBars.buttons["Workout"].tap()
     XCTAssertTrue(firstSet.exists)
@@ -66,6 +71,7 @@ final class WorkoutFlowTests: XCTestCase {
     XCTAssertTrue(app.buttons["Finish early"].isHittable)
     app.buttons["Finish early"].tap()
     app.alerts.buttons["Finish early"].tap()
+    XCTAssertTrue(app.buttons["start_monday"].waitForExistence(timeout: 10))
     for _ in 0..<18 {
       if app.buttons["Graphs"].isHittable { break }
       app.swipeDown()

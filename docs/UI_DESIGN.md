@@ -126,14 +126,27 @@ Each block offers an explicit countdown using its saved prescription's rest.
 For supersets, start it after both exercises; for unilateral work, after both
 sides. Starting a new countdown replaces the old one. It rounds remaining seconds
 up, catches up when the app resumes and displays “Rest complete” at zero. It does
-not automatically start, advance sets or authorize continuing.
+not automatically start or authorize continuing. After a confirmed set save or skip,
+the first unrecorded working set is highlighted and scrolled into view, in block
+order and paired rounds, completing both sides before moving on.
 
-Clear rest, workout changes, successful completion, screen disposal and app
-termination clear the in-memory countdown. Switching tabs or viewing history
-retains its deadline. A visible foreground completion cues once. A countdown
-that elapsed while hidden or backgrounded stays silent on return. No background
-alarm or notification is scheduled. Timer controls do not write workouts or
-participate in deterministic training rules.
+Clear rest, workout changes and successful completion cancel the local rest alert
+and clear the in-memory countdown. Switching tabs or viewing history retains its
+deadline. A visible foreground completion cues once. The countdown itself remains
+in-memory; an already scheduled iOS alert can still arrive after process termination.
+Relaunch cancels the former alert because its on-screen countdown is not restored.
+An optional rest alert is scheduled at the deadline, with foreground banner/sound
+and background delivery subject to system permission/settings. Replacement rest
+requests cancel the previous request, including asynchronous scheduling races.
+Timer controls do not write workouts or participate in deterministic training rules.
+
+Settings > Notifications offers separate rest-alert and workout-reminder toggles,
+explicit reminder weekdays and a local wall-clock time. Saving requests iOS
+permission only when an alert is enabled. Empty reminder-day selections are
+rejected, denied permission is explained with a Settings link, and scheduling
+failure is visible. Reminders are generic recurring local notifications; they
+never select/start a workout or advance the program. Fixture sessions never
+schedule or remove production notifications.
 
 ## History and graphs
 
@@ -149,7 +162,9 @@ selection and an expandable exact-value list linked to the source workout. The
 horizontal axis is set order, not elapsed time. Include only positive-repetition
 sets explicitly marked valid; exclude warm-ups, skips, unknown/invalid/pain
 records and missing values. Partition series by program version, template slot,
-variant, exact setup, load convention and side. Bodyweight shows reps; assistance
+variant, known legacy setup, load convention and side. New entries with no setup
+label are additionally separated by session, so missing setup does not assert
+comparability across sessions. Bodyweight shows reps; assistance
 is labeled as support, never strength gained. No estimated 1RM, volume, readiness
 or recommendation metric is introduced. Support zero loads, one-point/constant
 series and clear empty/error states. Search includes workout titles, prescribed
@@ -179,3 +194,25 @@ source and detailed evidence remain in Git history and the existing ADRs. They
 are useful reference material, not proof that the native replacement passed the
 same checks. Database reopen tests are not physical power-loss tests, and one
 phone cannot establish coverage across every supported iOS version or device.
+
+## September 25 workout feedback
+
+The set editor no longer requests an exact machine/setup label. Existing labels
+remain stored and are preserved when correcting the same variation; changing a
+variation clears its old label. New manual records use an empty setup field,
+never an invented or verified setup. Verified training setup remains separate.
+Load choices match the selected variation's existing validation semantics: per
+dumbbell, bodyweight or assistance for those variants; displayed-machine,
+plates-only or total load for remaining variants. Selecting an alternative
+resets load semantics; incompatible options are not offered.
+
+Copy previous set explicitly copies the closest earlier non-skipped set of the
+same exercise, side and warm-up/working category into the editor. It fills
+variation, measurement, weight and repetitions, not RIR, validity or completion.
+Saving is still explicit. Acknowledged completion (normal or early, including a
+successful retry) returns to the workout home; failed/unconfirmed completion
+retains the current workout. Completed history remains openable and correctable.
+
+Settings > Exercise library provides searchable offline wger names and source
+attribution. It contains no instructions, media, selection action or bindings to
+program slots. See [wger reference snapshot](catalog/WGER_REFERENCE_2026_09_25.md).

@@ -12,7 +12,8 @@ struct HomeView: View {
       WorkoutView(controller: controller, model: model, visible: tab == 0)
         .tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }.tag(0)
       SettingsView(
-        directory: model.directory, appearance: model.appearanceBinding,
+        directory: model.directory, notifications: model.notifications,
+        exerciseReferences: model.exerciseReferences, appearance: model.appearanceBinding,
         hapticsEnabled: model.hapticsBinding, cue: model.cue
       )
       .tabItem { Label("Settings", systemImage: "gearshape") }.tag(1)
@@ -60,46 +61,54 @@ struct WorkoutView: View {
   private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
   var body: some View {
     NavigationView {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
-          Picker("Workout view", selection: $mode) {
-            Text("Log").tag(0)
-            Text("History").tag(1)
-            Text("Graphs").tag(2)
-          }.pickerStyle(.segmented).disabled(controller.locked)
-          if let error = controller.error {
-            VStack(alignment: .leading, spacing: 8) {
-              if let pending = controller.pendingChange { pendingNotice(pending) }
-              Text(error).foregroundColor(.red)
-              Button("Retry") {
-                Task {
-                  if controller.locked {
-                    feedback(await controller.retry())
-                  } else {
-                    await controller.load()
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(alignment: .leading, spacing: 20) {
+            Picker("Workout view", selection: $mode) {
+              Text("Log").tag(0)
+              Text("History").tag(1)
+              Text("Graphs").tag(2)
+            }.pickerStyle(.segmented).disabled(controller.locked).id("workout_home")
+            if let error = controller.error {
+              VStack(alignment: .leading, spacing: 8) {
+                if let pending = controller.pendingChange { pendingNotice(pending) }
+                Text(error).foregroundColor(.red)
+                Button("Retry") {
+                  Task {
+                    if controller.locked {
+                      feedback(await controller.retry())
+                    } else {
+                      await controller.load()
+                    }
                   }
                 }
-              }
-            }.accessibilityElement(children: .contain)
-          }
-          if controller.busy { ProgressView().accessibilityLabel("Saving") }
-          if mode == 0 {
-            logger
-          } else {
-            HistoryView(
-              logs: controller.logs, profile: controller.profile, graphs: mode == 2,
-              query: $historyQuery, days: $historyDays,
-              repetitionMetrics: $historyRepetitionMetrics, cue: model.cue,
-              open: { log in
-                controller.select(log.id)
-                mode = 0
-              },
-              delete: { log in
-                deleting = log
-                model.cue(.warning)
-              })
-          }
-        }.padding().frame(maxWidth: 720)
+              }.accessibilityElement(children: .contain)
+            }
+            if controller.busy { ProgressView().accessibilityLabel("Saving") }
+            if mode == 0 {
+              logger
+            } else {
+              HistoryView(
+                logs: controller.logs, profile: controller.profile, graphs: mode == 2,
+                query: $historyQuery, days: $historyDays,
+                repetitionMetrics: $historyRepetitionMetrics, cue: model.cue,
+                open: { log in
+                  controller.select(log.id)
+                  mode = 0
+                },
+                delete: { log in
+                  deleting = log
+                  model.cue(.warning)
+                })
+            }
+          }.padding().frame(maxWidth: 720)
+        }
+        .onChange(of: controller.selected?.currentTarget?.id) { _, target in
+          withAnimation { proxy.scrollTo(target ?? "workout_home", anchor: .center) }
+        }
+        .onChange(of: controller.selectedID) { _, id in
+          if id == nil { withAnimation { proxy.scrollTo("workout_home", anchor: .top) } }
+        }
       }
       .navigationTitle("Workout")
       .toolbar {
@@ -190,11 +199,13 @@ struct WorkoutView: View {
       }
       .onChange(of: controller.selectedID) {
         rest.clear()
+        model.notifications.clearRest()
         completionArmed = false
       }
       .onChange(of: controller.selected?.completed) { _, complete in
         if complete == true {
           rest.clear()
+          model.notifications.clearRest()
           completionArmed = false
         }
       }
@@ -285,6 +296,7 @@ struct WorkoutView: View {
             Button("Start \(block.restSeconds)s rest") {
               do {
                 try rest.start(seconds: block.restSeconds, now: Date())
+                model.notifications.startRest(seconds: block.restSeconds)
                 arm()
                 model.cue(.impact)
               } catch { model.cue(.error) }
@@ -340,16 +352,25 @@ struct WorkoutView: View {
     let saved = log.sets.first {
       $0.slot == exercise.id && $0.index == index && $0.side == side && $0.warmup == warmup
     }
+    let rowID = "set_\(exercise.id)_\(index)_\(side.rawValue)_\(warmup)"
+    let current = log.currentTarget?.id == rowID
     return Button {
       editor = SetEditorRequest(
         log: log, exercise: exercise, index: index, side: side, warmup: warmup)
     } label: {
       VStack(alignment: .leading, spacing: 4) {
+        if current {
+          Label("Current set", systemImage: "arrow.right.circle.fill").font(.caption.bold())
+        }
         Text("\(warmup ? "Warm-up" : "Set") \(index)\(side == .both ? "" : " · " + side.rawValue)")
         Text(saved.map(setSummary) ?? "Not recorded").font(.subheadline).foregroundColor(.secondary)
       }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
     }.disabled(controller.locked || (log.completed && saved == nil))
-      .accessibilityIdentifier("set_\(exercise.id)_\(index)_\(side.rawValue)_\(warmup)")
+      .padding(.horizontal, 8)
+      .background(current ? Color.accentColor.opacity(0.15) : Color.clear)
+      .cornerRadius(10)
+      .id(rowID)
+      .accessibilityIdentifier(rowID)
   }
   private func pendingNotice(_ change: PendingProgramLogChange) -> some View {
     let title: String
@@ -401,6 +422,7 @@ struct WorkoutView: View {
         "\(log.completed ? "Total time" : "Workout time")  \(timerText(sessionElapsed(start: log.startedAt, end: log.completedAt, now: now)))"
       ).monospacedDigit()
       if !log.completed && rest.started {
+        RestNotificationStatus(model: model.notifications)
         HStack {
           Text(
             rest.remaining(now: now) == 0
@@ -408,6 +430,7 @@ struct WorkoutView: View {
           ).monospacedDigit()
           Button("Clear rest") {
             rest.clear()
+            model.notifications.clearRest()
             completionArmed = false
             model.cue(.selection)
           }
