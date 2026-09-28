@@ -85,3 +85,49 @@ public func exerciseHistory(_ logs: [ProgramLog]) -> [ExerciseHistorySeries] {
     a.element.name == b.element.name ? a.offset < b.offset : a.element.name < b.element.name
   }.map(\.element)
 }
+
+/// The most recent earlier finished workout's valid working sets for one exercise side.
+/// Descriptive only: it is the user's own record, never a target, suggestion or baseline.
+public struct LastPerformance: Equatable, Sendable {
+  public let log: ProgramLog
+  public let sets: [ProgramSet]
+  /// True when the sets were matched to a set already recorded in the current workout.
+  public let matchesCurrentSetup: Bool
+}
+/// Uses the same comparability as `exerciseHistory`: profile, program version and session,
+/// slot, side, variant, setup and load convention. An empty setup is not comparable. Before
+/// today's setup is recorded, the earlier workout's first valid working set picks the setup.
+public func lastPerformance(
+  _ logs: [ProgramLog], current: ProgramLog, slot: String, side: LoggedSide
+) -> LastPerformance? {
+  func working(_ log: ProgramLog) -> [ProgramSet] {
+    log.sets.filter {
+      $0.slot == slot && $0.side == side && !$0.warmup && !$0.skipped && $0.validity == .valid
+        && !$0.setup.isEmpty && ($0.reps ?? 0) > 0
+        && ($0.convention == .bodyweight || $0.load != nil)
+    }.sorted { $0.index < $1.index }
+  }
+  func sameSetup(_ a: ProgramSet, _ b: ProgramSet) -> Bool {
+    a.variant == b.variant && ManualJSON.bytesEqual(a.setup, b.setup)
+      && a.convention == b.convention
+  }
+  let reference = working(current).first
+  let earlier = logs.filter {
+    $0.id != current.id && $0.completed && $0.profile == current.profile
+      && $0.programId == current.programId && $0.programVersion == current.programVersion
+      && $0.startedTimestamp.microsecondsSince1970 < current.startedTimestamp.microsecondsSince1970
+  }.sorted { a, b in
+    a.startedTimestamp == b.startedTimestamp
+      ? a.id > b.id
+      : a.startedTimestamp.microsecondsSince1970 > b.startedTimestamp.microsecondsSince1970
+  }
+  for log in earlier {
+    let sets = working(log)
+    guard let anchor = reference ?? sets.first else { continue }
+    let matched = sets.filter { sameSetup($0, anchor) }
+    if !matched.isEmpty {
+      return LastPerformance(log: log, sets: matched, matchesCurrentSetup: reference != nil)
+    }
+  }
+  return nil
+}
