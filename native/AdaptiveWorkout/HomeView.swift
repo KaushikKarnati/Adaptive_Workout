@@ -269,6 +269,15 @@ struct WorkoutView: View {
               Text(
                 "\(exercise.sets) × \(exercise.minReps)–\(exercise.maxReps) reps · RIR 2–3\(exercise.eachSide ? " · each side" : "")"
               ).font(.subheadline).foregroundColor(.secondary)
+              ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) {
+                side in
+                if let last = lastPerformance(
+                  controller.logs, current: log, slot: exercise.id, side: side)
+                {
+                  Text(lastTimeSummary(last, side: side)).font(.footnote)
+                    .foregroundColor(.secondary)
+                }
+              }
               ForEach(1...exercise.sets, id: \.self) { index in
                 ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) {
                   side in
@@ -436,16 +445,46 @@ struct WorkoutView: View {
           }
         }
       }
-    }.font(.subheadline).frame(maxWidth: .infinity, alignment: .leading).padding().background(
-      .regularMaterial)
+    }.font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 20).padding(.vertical, 12)
+      .modifier(TimerSurface())
+      .padding(.horizontal).padding(.bottom, 8)
   }
+}
+
+/// Floating timer surface: Liquid Glass on iOS 26 and later, system material before it.
+private struct TimerSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content.glassEffect(.regular, in: .rect(cornerRadius: 24))
+    } else {
+      content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24))
+    }
+  }
+}
+
+/// The user's own earlier record for one exercise side. Descriptive, never a target.
+func lastTimeSummary(_ last: LastPerformance, side: LoggedSide) -> String {
+  let loads = Set(last.sets.map { loadText($0) })
+  let values =
+    loads.count == 1
+    ? "\(loads.first!) × " + last.sets.map { String($0.reps ?? 0) }.joined(separator: ", ")
+    : last.sets.map { "\(loadText($0)) × \($0.reps ?? 0)" }.joined(separator: ", ")
+  return [
+    last.matchesCurrentSetup ? "Last time, same setup" : "Last time",
+    last.log.startedAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+    side == .both ? last.sets[0].setup : "\(side.rawValue.capitalized) · \(last.sets[0].setup)",
+    values,
+  ].joined(separator: " · ")
 }
 
 func setSummary(_ set: ProgramSet) -> String {
   if set.skipped { return "Skipped" }
-  let load =
-    set.load.map { formatPounds($0) + (set.convention == .assistance ? " lb support" : " lb") }
-    ?? "Bodyweight"
   return
-    "\(load) · \(set.reps ?? 0) reps · \(set.rir.map { "RIR \($0)" } ?? "RIR unknown") · \(set.validity.rawValue)"
+    "\(loadText(set)) · \(set.reps ?? 0) reps · \(set.rir.map { "RIR \($0)" } ?? "RIR unknown") · \(set.validity.rawValue)"
+}
+
+func loadText(_ set: ProgramSet) -> String {
+  set.load.map { formatPounds($0) + (set.convention == .assistance ? " lb support" : " lb") }
+    ?? "Bodyweight"
 }

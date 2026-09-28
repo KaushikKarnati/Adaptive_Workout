@@ -178,11 +178,29 @@ private struct GymEquipmentEdit: Identifiable {
   var id: String
   var observation: GymEquipment?
 }
+/// Status in words and a symbol, so availability never depends on color alone.
+private func availabilitySymbol(_ availability: EquipmentAvailability) -> String {
+  switch availability {
+  case .available: return "checkmark.circle"
+  case .unavailable: return "xmark.circle"
+  case .unknown: return "questionmark.circle"
+  }
+}
+private func availabilitySummary(_ observation: GymEquipment?) -> String {
+  guard let observation, observation.availability != .unknown else { return "Not checked" }
+  var parts = [observation.availability.rawValue.capitalized]
+  if !observation.notes.isEmpty { parts.append("“\(observation.notes)”") }
+  if let checkedAt = observation.checkedAt {
+    parts.append("checked \(checkedAt.formatted(.dateTime.month(.abbreviated).day()))")
+  }
+  return parts.joined(separator: " · ")
+}
 private struct GymSettingsView: View {
   @StateObject private var model: GymSettingsModel
   let cue: (AppModel.Cue) -> Void
   @State private var adding = false
   @State private var editing: GymEquipmentEdit?
+  @State private var filter: EquipmentAvailability?
   @State private var name = ""
   @State private var address = ""
   @State private var formError: String?
@@ -226,21 +244,39 @@ private struct GymSettingsView: View {
             Link("Location source", destination: URL(string: homewoodSource)!)
           }
           Text("General equipment checklist").font(.headline)
-          Text("Mark only equipment you have checked at this location.").font(.caption)
-            .foregroundColor(.secondary)
-          ForEach(SetupTaxonomy.equipmentIds.sorted(), id: \.self) { category in
+          Text(
+            "Mark only equipment you have checked at this location. Unchecked items are not assumed available."
+          ).font(.caption).foregroundColor(.secondary)
+          Picker("Show equipment", selection: $filter) {
+            Text("All").tag(EquipmentAvailability?.none)
+            Text("Available").tag(EquipmentAvailability?.some(.available))
+            Text("Not checked").tag(EquipmentAvailability?.some(.unknown))
+            Text("Unavailable").tag(EquipmentAvailability?.some(.unavailable))
+          }.pickerStyle(.segmented)
+            .onChange(of: filter) { cue(.selection) }
+          Text(
+            "\(gym.availableCategories.count) of \(SetupTaxonomy.equipmentIds.count) categories confirmed available"
+          ).font(.caption).foregroundColor(.secondary)
+          ForEach(
+            SetupTaxonomy.equipmentIds.sorted().filter { category in
+              filter == nil
+                || (gym.equipment.first { $0.category == category }?.availability ?? .unknown)
+                  == filter
+            }, id: \.self
+          ) { category in
             let observation = gym.equipment.first { $0.category == category }
             Button {
               editing = GymEquipmentEdit(id: category, observation: observation)
             } label: {
-              VStack(alignment: .leading) {
-                Text(category.replacingOccurrences(of: "_", with: " ").capitalized)
-                Text(observation?.availability.rawValue.capitalized ?? "Not checked").font(.caption)
-                  .foregroundColor(.secondary)
-                if let observation, !observation.notes.isEmpty {
-                  Text(observation.notes).font(.caption).foregroundColor(.secondary)
+              HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: availabilitySymbol(observation?.availability ?? .unknown))
+                  .accessibilityHidden(true)
+                VStack(alignment: .leading) {
+                  Text(category.replacingOccurrences(of: "_", with: " ").capitalized)
+                  Text(availabilitySummary(observation)).font(.caption)
+                    .foregroundColor(.secondary)
                 }
-              }
+              }.frame(minHeight: 44)
             }.disabled(model.locked)
           }
         }
