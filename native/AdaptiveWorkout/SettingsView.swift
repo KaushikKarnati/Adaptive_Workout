@@ -86,6 +86,13 @@ struct SettingsView: View {
               DisclosureGroup("Developer practice") { PracticeSettingsView(directory: directory) }
             }
           }
+          if ProcessInfo.processInfo.arguments.contains("--concepts") {
+            Section("Design concepts") {
+              NavigationLink("2a–2c · Next session, time and exceptions") {
+                NextSessionConceptView()
+              }
+            }
+          }
         #endif
         Section {
           Text(

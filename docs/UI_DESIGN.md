@@ -104,6 +104,13 @@ The gym checklist can be filtered by All, Available, Not checked or Unavailable.
 Each row states its status in words with a symbol, any note and the date it was
 checked, and the list reports how many categories are confirmed available.
 
+Design concepts 2a–2c (next session with its reason, session length, and the five
+exception controls) exist only as reference screens in `ConceptPreviews.swift`. They
+compile in Debug builds only and open from Settings with the `--concepts` launch
+argument or from Xcode previews. They show approved prescriptions in one labeled
+sample scenario and never save, start a workout, choose a replacement or change a
+recommendation. Pain wording there still needs clinical review.
+
 ## Program and setup presentation
 
 The program preview preserves frozen prescriptions, session order, working-set
