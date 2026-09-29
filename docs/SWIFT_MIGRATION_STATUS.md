@@ -344,3 +344,39 @@ Review identified unresolved conflicts with the approved architecture and gates:
 
 The earlier implementation descriptions and passing tests must not be read as
 proof that these review, safety, evidence or consistency requirements are met.
+
+### September 29 review remediation — gates restored
+
+The three findings above are mitigated by restoring the approved no-recommendation
+boundary, not by claiming that missing review or atomic orchestration is complete.
+
+- Calibration rejects without any setup write. Removed default loads, inferred
+  equipment ladders, synthetic baseline/rehearsal confirmations and replacement
+  capability/limitation assessments. Manual log count never unlocks generation.
+- Owner catalog draft version `2026.09.29.2` has all five reviews pending, all 25
+  entries disabled and empty trusted bindings. Its synthetic source identities
+  remain explicitly unverified placeholders, not a reviewed upstream import.
+- The former coordinated source now rejects capture and direct save. Removed
+  assumed safety clearance and the independent-read/check/write path. Production
+  atomic capture, all-input freshness checking and save/receipt commit remain
+  pending under ADR 0014.
+- App composition no longer registers an adaptive controller. The adaptive tab
+  explains the pending verification; calibration/unlock controls were removed.
+  Existing setup and generated records are preserved but not resumed by the app.
+  Prior automatically created confirmations must not be treated as verified in
+  any future reactivation; provenance review is required before reuse.
+
+Validation on the final source revision:
+
+- Required strict recursive `xcrun swift-format lint`: passed.
+- `swift build --build-tests --package-path native/Packages/WorkoutCore`: passed.
+- `swift test --package-path native/Packages/WorkoutCore`: 132 tests, zero failures.
+  Regressions cover pending/nonselectable reviews, empty bindings, capture/direct
+  save rejection even for a ready fixture result, no-log and logged calibration
+  rejection, seven-log non-unlock, retries and unchanged existing/profile data.
+- Unsigned generic iOS `xcodebuild ... CODE_SIGNING_ALLOWED=NO build analyze`:
+  both build and static analysis passed. The only warning was skipped App Intents
+  metadata extraction because this app does not depend on AppIntents.framework.
+- Final diff/whitespace review passed. No dependencies or store migrations added.
+- Simulator UI tests, physical-device checks, installed-data transfer,
+  accessibility and haptic acceptance were not run or claimed.

@@ -319,3 +319,20 @@ records and routes corrections back to the existing editor. The new design does
 not add a persistence schema, generated-workout caller, analytics algorithm,
 network dependency or new safety policy. See the Stitch section of UI_DESIGN.md
 for intentional differences between sample screen content and supported data.
+
+### September 29 review remediation
+
+The live app does not construct an adaptive controller or load the owner-program
+placeholder catalog. The adaptive tab explains that verification is pending;
+manual logging and setup remain available. Existing generated/setup records are
+preserved, but are not resumed or treated as verified by the live app.
+
+`BaselineCalibrationService.calibrateBaselines` rejects without writing: manual
+logs and their count cannot confirm equipment, load ladders, starting loads,
+rehearsal feedback, capability assessments or safety. Catalog placeholders have
+pending reviews, disabled availability and empty trusted bindings; their synthetic
+upstream identities are not source provenance. `CoordinatedSessionGenerationSource`
+is an unavailable compatibility shell: both capture and save reject. It must not
+be registered until the atomic consistency and durable provenance requirements
+of ADR 0014 are implemented. This remediation restores the gate; it does not
+implement a production atomic adapter or complete catalog reviews.

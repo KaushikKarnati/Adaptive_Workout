@@ -204,12 +204,14 @@ struct WorkoutView: View {
                   switchToManual: { engineMode = 0 }
                 )
               } else {
-                Text("Adaptive engine unavailable.")
+                Text(
+                  "Adaptive recommendations are unavailable while catalog review, explicit setup verification, and consistent input storage are pending. Continue with Manual Plan."
+                )
               }
             } else if choosing {
               sessionSelection
             } else if hub {
-              if let active = model.adaptiveController?.activeWorkout {
+              if model.adaptiveController?.activeWorkout != nil {
                 HStack {
                   Circle().fill(Stitch.green).frame(width: 8, height: 8)
                   StitchLabel(text: "Active adaptive workout")
@@ -550,59 +552,10 @@ struct WorkoutView: View {
   }
   private var nextWorkout: some View { dashboard }
   private func calibrationMiniBanner(_ progress: CalibrationProgress) -> some View {
-    Button {
-      engineMode = 1
-    } label: {
-      HStack(spacing: 12) {
-        ZStack {
-          Circle()
-            .stroke(Stitch.elevated, lineWidth: 3.5)
-            .frame(width: 38, height: 38)
-          Circle()
-            .trim(from: 0, to: CGFloat(progress.fraction))
-            .stroke(
-              progress.isUnlocked ? Stitch.green : Stitch.amber,
-              style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
-            )
-            .rotationEffect(.degrees(-90))
-            .frame(width: 38, height: 38)
-          if progress.isUnlocked {
-            Image(systemName: "checkmark")
-              .font(.system(size: 13, weight: .bold))
-              .foregroundStyle(Stitch.green)
-          } else {
-            Text("\(progress.loggedCount)/\(progress.requiredCount)")
-              .font(Stitch.font(10, .semibold))
-              .foregroundStyle(Stitch.ink)
-          }
-        }
-        VStack(alignment: .leading, spacing: 3) {
-          HStack {
-            Text(progress.isUnlocked ? "TRIAL COMPLETE" : "ADAPTIVE ENGINE CALIBRATION")
-              .font(Stitch.font(10, .semibold)).tracking(0.6)
-              .foregroundStyle(progress.isUnlocked ? Stitch.green : Stitch.amber)
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(Stitch.font(11))
-              .foregroundStyle(Stitch.secondary)
-          }
-          Text(
-            progress.isUnlocked
-              ? "All 7 trial workouts logged. Tap to activate engine."
-              : "\(progress.remainingCount) more \(progress.remainingCount == 1 ? "log" : "logs") needed to unlock Adaptive Engine"
-          )
-          .font(Stitch.font(12, .medium))
-          .foregroundStyle(Stitch.ink)
-        }
-      }
-      .padding(12)
-      .background(Stitch.card, in: RoundedRectangle(cornerRadius: 12))
-      .overlay(
-        RoundedRectangle(cornerRadius: 12).stroke(Stitch.elevated.opacity(0.45), lineWidth: 0.5)
-      )
-    }
-    .buttonStyle(.plain)
-    .accessibilityIdentifier("calibration_progress_banner")
+    Text("Manual logs do not verify starting loads or unlock adaptive recommendations.")
+      .font(Stitch.font(12, .medium))
+      .foregroundStyle(Stitch.secondary)
+      .accessibilityIdentifier("calibration_progress_banner")
   }
   private var dashboard: some View {
     StitchDashboard(

@@ -75,37 +75,10 @@ final class AppModel: ObservableObject {
       let stores = try LocalAppStores(directory: directory)
       controller = ProgramLogController(repository: stores.programLogs)
 
-      let composer = SessionComposer(
-        evaluator: ExerciseEligibilityEvaluator(
-          catalogValidator: ExerciseCatalogManifestValidator(
-            importedAt: OwnerProgramCatalogSlice.retrievedAt)),
-        bindings: OwnerProgramCatalogSlice.bindings
-      )
-      let generationSource = CoordinatedSessionGenerationSource(
-        profile: "local_owner",
-        setupRepository: stores.trainingSetup,
-        historyRepository: stores.recommendationHistory,
-        catalog: OwnerProgramCatalogSlice.entries,
-        catalogDigest: OwnerProgramCatalogSlice.contentSha256,
-        candidateExerciseIds: Array(OwnerProgramCatalogSlice.bindings.exerciseIds.values),
-        manifest: OwnerProgramCatalogSlice.manifest
-      )
-      let generationService = SessionGenerationService(source: generationSource, composer: composer)
-      let savedWorkoutService = SavedWorkoutService(stores.recommendationHistory)
-
-      let calibrationService = BaselineCalibrationService(
-        programLogsRepository: stores.programLogs,
-        setupRepository: stores.trainingSetup,
-        profileId: "local_owner"
-      )
-      adaptiveController = AdaptiveGenerationController(
-        generationService: generationService,
-        savedService: savedWorkoutService,
-        historyRepository: stores.recommendationHistory,
-        setupRepository: stores.trainingSetup,
-        calibrationService: calibrationService,
-        profile: "local_owner"
-      )
+      // ADR 0014: do not register generation or resume unverified prescriptions.
+      // Stored records remain intact while catalog, safety and atomic input
+      // capture are pending. Manual logging and setup stay available.
+      adaptiveController = nil
       hapticsEnabled = preferences.object(forKey: "adaptiveWorkout.hapticsEnabled") as? Bool ?? true
       let layout = preferences.string(forKey: "adaptiveWorkout.loggingLayout") ?? "cards"
       loggingLayout = ["cards", "table", "focus"].contains(layout) ? layout : "cards"

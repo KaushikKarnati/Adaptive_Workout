@@ -372,154 +372,17 @@ struct AdaptiveWorkoutView: View {
   }
 
   private var calibrationProgressCard: some View {
-    let progress = adaptiveController.calibrationProgress
-    return VStack(alignment: .leading, spacing: 16) {
-      HStack {
-        Text(progress.isUnlocked ? "TRIAL COMPLETE" : "CALIBRATION IN PROGRESS")
-          .font(Stitch.font(11, .semibold)).tracking(0.8)
-          .padding(.horizontal, 10).padding(.vertical, 6)
-          .background(
-            progress.isUnlocked ? Stitch.green.opacity(0.2) : Stitch.amber.opacity(0.18),
-            in: Capsule()
-          )
-          .foregroundStyle(progress.isUnlocked ? Stitch.green : Stitch.amber)
-        Spacer()
-        Text("\(progress.loggedCount) of \(progress.requiredCount) logged")
-          .font(Stitch.font(12, .medium)).foregroundStyle(Stitch.secondary)
-      }
-
-      VStack(alignment: .leading, spacing: 4) {
-        if progress.isUnlocked {
-          Text("Baselines Ready to Calibrate")
-            .font(Stitch.font(24, .semibold))
-          Text(
-            "You have logged \(progress.loggedCount) manual workouts. Calibrate baselines to activate transparent progression recommendations."
-          )
-          .font(Stitch.font(13)).foregroundStyle(Stitch.secondary)
-        } else {
-          Text(
-            "\(progress.remainingCount) More \(progress.remainingCount == 1 ? "Log" : "Logs") Needed"
-          )
-          .font(Stitch.font(24, .semibold))
-          Text(
-            "The adaptive engine requires 7 verified manual workouts to establish your exact working loads, RIR, and movement baselines before generating recommendations."
-          )
-          .font(Stitch.font(13)).foregroundStyle(Stitch.secondary)
-        }
-      }
-
-      VStack(alignment: .leading, spacing: 6) {
-        HStack {
-          Text("Manual Workout Progress")
-            .font(Stitch.font(12, .medium)).foregroundStyle(Stitch.secondary)
-          Spacer()
-          Text("\(progress.percentage)%")
-            .font(Stitch.font(13, .semibold)).foregroundStyle(Stitch.ink)
-        }
-
-        GeometryReader { proxy in
-          ZStack(alignment: .leading) {
-            Capsule()
-              .fill(Stitch.elevated)
-              .frame(height: 10)
-            Capsule()
-              .fill(
-                LinearGradient(
-                  colors: progress.isUnlocked
-                    ? [Stitch.green, Stitch.green.opacity(0.8)]
-                    : [Stitch.amber, Color(red: 255 / 255, green: 184 / 255, blue: 116 / 255)],
-                  startPoint: .leading,
-                  endPoint: .trailing
-                )
-              )
-              .frame(width: max(10, proxy.size.width * CGFloat(progress.fraction)), height: 10)
-          }
-        }
-        .frame(height: 10)
-      }
-
-      HStack(spacing: 6) {
-        ForEach(1...max(1, progress.requiredCount), id: \.self) { day in
-          let isLogged = day <= progress.loggedCount
-          VStack(spacing: 4) {
-            ZStack {
-              Circle()
-                .fill(
-                  isLogged ? (progress.isUnlocked ? Stitch.green : Stitch.amber) : Stitch.inset
-                )
-                .frame(width: 32, height: 32)
-              if isLogged {
-                Image(systemName: "checkmark")
-                  .font(.system(size: 13, weight: .bold))
-                  .foregroundStyle(.white)
-              } else {
-                Text("\(day)")
-                  .font(Stitch.font(12, .medium))
-                  .foregroundStyle(Stitch.secondary)
-              }
-            }
-            Text("Day \(day)")
-              .font(Stitch.font(10))
-              .foregroundStyle(isLogged ? Stitch.ink : Stitch.secondary)
-          }
-          .frame(maxWidth: .infinity)
-        }
-      }
-      .padding(.vertical, 4)
-
-      if progress.isUnlocked {
-        Button {
-          Task {
-            let ok = await adaptiveController.calibrateBaselinesFromLogs()
-            model.cue(ok ? .success : .error)
-          }
-        } label: {
-          HStack {
-            Image(systemName: "sparkles")
-            Text("Calibrate Baselines & Unlock Engine")
-            Spacer()
-            Image(systemName: "arrow.right")
-          }
-        }
-        .buttonStyle(StitchPrimary())
-        .disabled(adaptiveController.locked)
-        .accessibilityIdentifier("calibrate_baselines_button")
-      } else {
-        if let switchToManual {
-          Button {
-            switchToManual()
-          } label: {
-            HStack {
-              Image(systemName: "dumbbell.fill")
-              Text("Log Next Workout in Manual Plan")
-              Spacer()
-              Image(systemName: "arrow.right")
-            }
-          }
+    VStack(alignment: .leading, spacing: 16) {
+      Text("Adaptive recommendations unavailable")
+        .font(Stitch.font(24, .semibold))
+      Text(
+        "Manual logs do not confirm equipment, starting loads, rehearsal feedback, or safety. Explicit verification and catalog review are still required."
+      )
+      .font(Stitch.font(13)).foregroundStyle(Stitch.secondary)
+      if let switchToManual {
+        Button("Continue with Manual Plan", action: switchToManual)
           .buttonStyle(StitchPrimary())
           .accessibilityIdentifier("switch_to_manual_button")
-        }
-
-        Button {
-          Task {
-            let ok = await adaptiveController.calibrateBaselinesFromLogs()
-            model.cue(ok ? .success : .error)
-          }
-        } label: {
-          HStack {
-            Text(
-              progress.loggedCount > 0
-                ? "Or calibrate early with current \(progress.loggedCount) \(progress.loggedCount == 1 ? "log" : "logs") ›"
-                : "Or calibrate with standard default baselines ›"
-            )
-            .font(Stitch.font(12, .medium)).foregroundStyle(Stitch.amber)
-            Spacer()
-          }
-          .frame(minHeight: 36)
-        }
-        .buttonStyle(.plain)
-        .disabled(adaptiveController.locked)
-        .accessibilityIdentifier("calibrate_early_button")
       }
     }
     .modifier(StitchCard())

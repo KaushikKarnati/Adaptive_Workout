@@ -1,9 +1,11 @@
 import Foundation
 import WorkoutDomain
 
+/// Unverified draft placeholders, including synthetic upstream identities.
+/// Never register as a production catalog; real source provenance remains pending.
 public enum OwnerProgramCatalogSlice {
   public static let schemaVersion = "1.0.0"
-  public static let catalogVersion = "2026.09.29.1"
+  public static let catalogVersion = "2026.09.29.2"
   public static let taxonomyVersion = "v2"
   public static let importToolVersion = "1.0.0"
 
@@ -19,12 +21,7 @@ public enum OwnerProgramCatalogSlice {
 
   public static let retrievedAt = Date(timeIntervalSince1970: 1_727_568_000)
 
-  private static let _approvedReview = CatalogReview(
-    status: .approved,
-    reviewerId: "product_owner",
-    reviewedAt: retrievedAt,
-    evidenceReference: "docs/SCIENCE.md"
-  )
+  private static let _pendingReview = CatalogReview(status: .pending)
 
   private static let _attribution = CatalogAttribution(
     licenseId: "cc-by-4.0",
@@ -99,7 +96,7 @@ public enum OwnerProgramCatalogSlice {
       sourceModifiedAt: retrievedAt,
       name: name,
       aliases: [],
-      instructions: "Approved exercise variation for owner program.",
+      instructions: "Unreviewed placeholder; not for recommendations.",
       movementPatternIds: [movementPattern],
       primaryMuscleIds: [primaryMuscle],
       secondaryMuscleIds: [],
@@ -114,13 +111,14 @@ public enum OwnerProgramCatalogSlice {
       translationAttribution: _attribution,
       wasModified: false,
       modificationNote: nil,
-      productReview: _approvedReview,
-      scienceReview: _approvedReview,
-      safetyReview: _approvedReview,
-      equipmentReview: _approvedReview,
-      licenseReview: _approvedReview,
-      availability: .enabled,
-      disabledReason: nil
+      productReview: _pendingReview,
+      scienceReview: _pendingReview,
+      safetyReview: _pendingReview,
+      equipmentReview: _pendingReview,
+      licenseReview: _pendingReview,
+      availability: .disabled,
+      disabledReason:
+        "Pending source verification and product, science, safety, equipment, and license reviews."
     )
   }
 
@@ -140,9 +138,9 @@ public enum OwnerProgramCatalogSlice {
   )
 
   public static let bindings: ProgramCatalogBindings = try! ProgramCatalogBindings(
-    version: "owner-program-bindings-v1",
-    reviewReference: "owner-program-review",
+    version: "owner-program-bindings-v2",
+    reviewReference: "pending-review",
     catalogDigest: contentSha256,
-    exerciseIds: Dictionary(uniqueKeysWithValues: zip(variants, entries.map(\.id)))
+    exerciseIds: [:]
   )
 }
