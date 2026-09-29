@@ -12,6 +12,8 @@ import WorkoutPersistence
   @Published var minutes = ""
   @Published var exclusions: Set<String> = []
   @Published var pending = false
+  private var pendingDurationChange = false
+  private var pendingExclusion: String?
   private var controller: TrainingSetupController?
   private let path: String
   var locked: Bool { pending || !loaded }
@@ -41,7 +43,13 @@ import WorkoutPersistence
   @discardableResult func retry() -> Bool {
     let success = controller?.retry() ?? false
     sync()
-    if success { notice = "Saved on this device." }
+    if success {
+      if pendingDurationChange { minutes = saved?.preferredMinutes.map(String.init) ?? "" }
+      if let pendingExclusion { exclusions.insert(pendingExclusion) }
+      pendingDurationChange = false
+      pendingExclusion = nil
+      notice = "Saved on this device."
+    }
     return success
   }
   @discardableResult func savePreferences() -> Bool {
@@ -50,6 +58,25 @@ import WorkoutPersistence
         days: Array(days), minutes: minutes, exclusions: Array(exclusions)) ?? false
     sync()
     if success { notice = "Saved on this device." }
+    return success
+  }
+  @discardableResult func saveDuration(_ value: Int?) -> Bool {
+    guard !locked else { return false }
+    let success = controller?.saveDuration(value) ?? false
+    sync()
+    pendingDurationChange = !success && pending
+    if success {
+      minutes = saved?.preferredMinutes.map(String.init) ?? ""
+      notice = "Saved on this device."
+    }
+    return success
+  }
+  @discardableResult func exclude(_ variation: String) -> Bool {
+    guard !locked else { return false }
+    let success = controller?.excludeVariation(variation) ?? false
+    sync()
+    pendingExclusion = !success && pending ? variation : nil
+    if success { exclusions.insert(variation) }
     return success
   }
   func saveMachine(
@@ -71,13 +98,9 @@ import WorkoutPersistence
 }
 
 struct SetupView: View {
-  @StateObject private var model: SetupModel
+  @ObservedObject var model: SetupModel
   let cue: (AppModel.Cue) -> Void
   @State private var editing: SetupEdit?
-  init(directory: URL, cue: @escaping (AppModel.Cue) -> Void = { _ in }) {
-    self.cue = cue
-    _model = StateObject(wrappedValue: SetupModel(directory: directory))
-  }
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text(
@@ -98,7 +121,9 @@ struct SetupView: View {
       }
       TextField("Preferred workout minutes", text: $model.minutes).keyboardType(.numberPad)
         .disabled(model.locked)
-      Text("A time preference, not a hard cutoff.").font(.caption).foregroundColor(.secondary)
+      Text(
+        "A time preference, not a hard cutoff. Leave blank for no time limit."
+      ).font(.caption).foregroundColor(.secondary)
       DisclosureGroup("Exercises to exclude") {
         ForEach(setupVariationNames.keys.sorted(), id: \.self) { key in
           Toggle(

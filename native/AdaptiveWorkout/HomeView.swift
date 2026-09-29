@@ -6,18 +6,82 @@ import WorkoutDomain
 struct HomeView: View {
   @ObservedObject var controller: ProgramLogController
   @ObservedObject var model: AppModel
+  @Environment(\.dynamicTypeSize) private var typeSize
   @State private var tab = 0
+  @State private var mode = 0
+  @StateObject private var setup: SetupModel
+  init(controller: ProgramLogController, model: AppModel) {
+    self.controller = controller
+    self.model = model
+    _setup = StateObject(wrappedValue: SetupModel(directory: model.directory))
+  }
   var body: some View {
-    TabView(selection: $tab) {
-      WorkoutView(controller: controller, model: model, visible: tab == 0)
-        .tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }.tag(0)
-      SettingsView(
-        directory: model.directory, appearance: model.appearanceBinding,
-        hapticsEnabled: model.hapticsBinding, cue: model.cue
-      )
-      .tabItem { Label("Settings", systemImage: "gearshape") }.tag(1)
+    VStack(spacing: 0) {
+      ZStack {
+        WorkoutView(
+          controller: controller, model: model, setup: setup,
+          visible: tab == 0 || tab == 2, mode: $mode, profile: { tab = 3 }
+        )
+        .opacity(tab == 0 || tab == 2 ? 1 : 0)
+        .allowsHitTesting(tab == 0 || tab == 2)
+        .accessibilityHidden(tab != 0 && tab != 2)
+        if tab == 1 {
+          NavigationStack {
+            ScrollView {
+              VStack(alignment: .leading, spacing: 16) {
+                Text("Your Training Plan").font(Stitch.font(32, .semibold))
+                Text("Approved manual prescriptions • Original day labels")
+                  .font(Stitch.font(12)).foregroundStyle(Stitch.secondary)
+                ForEach(ownerProgram, id: \.id) { plan in
+                  VStack(alignment: .leading, spacing: 12) {
+                    StitchLabel(text: plan.day)
+                    Text(plan.title).font(Stitch.font(22, .semibold))
+                    ForEach(Array(plan.blocks.enumerated()), id: \.offset) { _, block in
+                      ForEach(block.exercises) { exercise in
+                        Text(exercise.name).font(Stitch.font(16, .medium))
+                        Text(
+                          "\(exercise.sets) × \(exercise.minReps)–\(exercise.maxReps) reps • 2–3 RIR\(exercise.eachSide ? " • each side" : "")"
+                        )
+                        .font(Stitch.font(12)).foregroundStyle(Stitch.secondary)
+                      }
+                      Text(
+                        "Rest \(block.restSeconds)s \(block.isSuperset ? "after pair" : block.exercises.contains(where: \.eachSide) ? "after both sides" : "between sets")"
+                      )
+                      .font(Stitch.font(12)).foregroundStyle(Stitch.amber)
+                    }
+                  }.modifier(StitchCard())
+                }
+                Text(
+                  "Thursday • Recovery: no lifting, easy walking, optional light mobility; supplied plan target 8,000–10,000 total steps. Alternatives and setup requirements remain in Profile → Your program."
+                )
+                .font(Stitch.font(12)).foregroundStyle(Stitch.secondary)
+              }.padding(16).frame(maxWidth: 720)
+            }.background(Stitch.canvas).navigationTitle("Plan").navigationBarTitleDisplayMode(
+              .inline)
+          }
+        }
+        SettingsView(
+          directory: model.directory, setupModel: setup, appearance: model.appearanceBinding,
+          hapticsEnabled: model.hapticsBinding, cue: model.cue
+        ).opacity(tab == 3 ? 1 : 0).allowsHitTesting(tab == 3).accessibilityHidden(tab != 3)
+      }
+      HStack(spacing: 0) {
+        tabButton("Workout", icon: "dumbbell", value: 0)
+        tabButton("Plan", icon: "calendar", value: 1)
+        tabButton("History", icon: "clock.arrow.circlepath", value: 2)
+        tabButton("Profile", icon: "person.crop.circle", value: 3)
+      }.padding(.top, 8).background(Stitch.canvas)
     }
-    .onChange(of: tab) { model.cue(.selection) }
+    .background(Stitch.canvas)
+    .tint(Stitch.amber).foregroundStyle(Stitch.ink).font(Stitch.font(16))
+    .onChange(of: mode) { if mode == 0 && tab == 2 { tab = 0 } }
+    .onChange(of: tab) {
+      UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+      if tab == 0 { mode = 0 }
+      if tab == 2 { mode = 1 }
+      model.cue(.selection)
+    }
     .task { await controller.load() }
     .alert(
       "Appearance unavailable",
@@ -29,6 +93,24 @@ struct HomeView: View {
       Text(model.error ?? "")
     }
   }
+  private func tabButton(_ title: String, icon: String, value: Int) -> some View {
+    Button {
+      tab = value
+    } label: {
+      VStack(spacing: 5) {
+        Image(systemName: icon).font(.system(size: 20))
+        if !typeSize.isAccessibilitySize {
+          Text(title).font(Stitch.font(11, .medium)).tracking(0.5)
+        }
+      }.frame(maxWidth: .infinity, minHeight: 52)
+        .foregroundStyle(tab == value ? Stitch.amber : Stitch.secondary)
+        .contentShape(Rectangle())
+    }.buttonStyle(.plain).accessibilityLabel(title).accessibilityIdentifier(
+      "tab_" + title.lowercased()
+    )
+    .accessibilityAddTraits(tab == value ? .isSelected : [])
+  }
+
 }
 
 private struct SetEditorRequest: Identifiable {
@@ -38,14 +120,29 @@ private struct SetEditorRequest: Identifiable {
   let index: Int
   let side: LoggedSide
   let warmup: Bool
+  var initialValidity: SetValidity? = nil
+  var skipOnly = false
 }
 
 struct WorkoutView: View {
   @ObservedObject var controller: ProgramLogController
   @ObservedObject var model: AppModel
+  @ObservedObject var setup: SetupModel
   let visible: Bool
+  @Environment(\.dynamicTypeSize) private var typeSize
   @Environment(\.scenePhase) private var scenePhase
-  @State private var mode = 0
+  @Binding var mode: Int
+  var profile: () -> Void
+  @State private var hub = true
+  @State private var reviewCompleted = false
+  @ScaledMetric(relativeTo: .body) private var focusTileWidth = 105.0
+  @State private var historyMode = 0
+  @State private var durationSheet = false
+  @State private var exception: ProgramExercise?
+  @State private var pendingPainExercise: ProgramExercise?
+  @State private var expanded: Set<String> = []
+  @State private var focusedExercise: String?
+  @State private var restDuration = 0
   @State private var historyQuery = ""
   @State private var historyDays = 0
   @State private var historyRepetitionMetrics: [ExerciseSeriesKey: Bool] = [:]
@@ -62,11 +159,6 @@ struct WorkoutView: View {
     NavigationView {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          Picker("Workout view", selection: $mode) {
-            Text("Log").tag(0)
-            Text("History").tag(1)
-            Text("Graphs").tag(2)
-          }.pickerStyle(.segmented).disabled(controller.locked)
           if let error = controller.error {
             VStack(alignment: .leading, spacing: 8) {
               if let pending = controller.pendingChange { pendingNotice(pending) }
@@ -84,59 +176,134 @@ struct WorkoutView: View {
           }
           if controller.busy { ProgressView().accessibilityLabel("Saving") }
           if mode == 0 {
-            logger
+            if choosing {
+              sessionSelection
+            } else if hub {
+              dashboard
+            } else if let log = controller.selected, log.completed, !reviewCompleted {
+              StitchSummary(
+                log: log,
+                next: {
+                  controller.select(nil)
+                  hub = true
+                }, corrections: { reviewCompleted = true })
+            } else {
+              logger
+            }
           } else {
-            HistoryView(
-              logs: controller.logs, profile: controller.profile, graphs: mode == 2,
-              query: $historyQuery, days: $historyDays,
-              repetitionMetrics: $historyRepetitionMetrics, cue: model.cue,
-              open: { log in
-                controller.select(log.id)
-                mode = 0
-              },
-              delete: { log in
-                deleting = log
-                model.cue(.warning)
-              })
+            Picker("History view", selection: $historyMode) {
+              Text("Workouts").tag(0)
+              Text("Recorded trends").tag(1)
+              Text("Last trained").tag(2)
+            }.pickerStyle(.segmented).accessibilityIdentifier("history_mode").onChange(
+              of: historyMode
+            ) { model.cue(.selection) }
+            if historyMode == 2 {
+              LastTrainedView(
+                logs: controller.logs, profile: controller.profile,
+                enabled: model.lastTrainedBinding)
+            } else {
+              HistoryView(
+                logs: controller.logs, profile: controller.profile, graphs: historyMode == 1,
+                query: $historyQuery, days: $historyDays,
+                repetitionMetrics: $historyRepetitionMetrics, cue: model.cue,
+                open: { log in
+                  controller.select(log.id)
+                  mode = 0
+                  hub = false
+                  reviewCompleted = false
+                  choosing = false
+                },
+                delete: { log in
+                  deleting = log
+                  model.cue(.warning)
+                })
+            }
           }
         }.padding().frame(maxWidth: 720)
       }
-      .navigationTitle("Workout")
-      .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-          Button("Choose workout") { choosing = true }.disabled(controller.locked)
-        }
+      .id(
+        "\(mode)-\(hub)-\(choosing)-\(controller.selected?.completed ?? false)-\(reviewCompleted)"
+      )
+      .background(Stitch.canvas)
+      .toolbar(.hidden, for: .navigationBar)
+      .safeAreaInset(edge: .top, spacing: 0) {
+        HStack(spacing: 12) {
+          if !hub && mode == 0 && !choosing {
+            Button {
+              hub = true
+            } label: {
+              Image(systemName: "chevron.left").font(.system(size: 22))
+            }
+            .frame(width: 32, height: 44).accessibilityLabel("Back to dashboard")
+          }
+          Text(
+            typeSize.isAccessibilitySize
+              ? (mode == 1 ? "History" : "Workout")
+              : mode == 1
+                ? "History"
+                : choosing
+                  ? "Choose workout"
+                  : hub
+                    ? "Workout"
+                    : controller.selected?.completed == true && !reviewCompleted
+                      ? "Workout Summary" : "Active Workout"
+          )
+          .font(Stitch.font(typeSize.isAccessibilitySize ? 14 : 18, .semibold))
+          Spacer(minLength: 0)
+          Button {
+            choosing.toggle()
+            mode = 0
+          } label: {
+            Image(systemName: choosing ? "checkmark" : "slider.horizontal.3").font(
+              .system(size: 20)
+            ).frame(
+              width: 44, height: 44)
+          }.accessibilityLabel(choosing ? "Done" : "Choose workout").disabled(controller.locked)
+          Button(action: profile) {
+            Image(systemName: "person.crop.circle").font(.system(size: 20))
+              .foregroundStyle(.white).frame(width: 34, height: 34)
+              .background(Color(red: 137 / 255, green: 77 / 255, blue: 0), in: Circle())
+              .frame(width: 44, height: 44)
+          }.accessibilityLabel("Profile")
+        }.padding(.horizontal, 16).frame(minHeight: 56).background(Stitch.canvas)
       }
       .safeAreaInset(edge: .bottom) {
-        if let log = controller.selected, mode == 0 { timerPanel(log) }
+        if let log = controller.selected, !log.completed, mode == 0, !choosing, !hub {
+          timerPanel(log)
+        }
       }
     }.navigationViewStyle(.stack)
-      .sheet(isPresented: $choosing) {
-        NavigationView {
-          List(ownerProgram) { plan in
-            Button {
-              choosing = false
-              choose(plan)
-            } label: {
-              VStack(alignment: .leading) {
-                Text(plan.day)
-                Text(plan.title).font(.subheadline).foregroundColor(.secondary)
+      .sheet(isPresented: $durationSheet) { DurationSheet(model: setup, cue: model.cue) }
+      .sheet(
+        item: $exception,
+        onDismiss: {
+          if let exercise = pendingPainExercise {
+            pendingPainExercise = nil
+            if let log = controller.selected {
+              let slot = manualWorkingSlots(log).first {
+                $0.exercise.id == exercise.id && $0.record(in: log) == nil
               }
-            }.accessibilityIdentifier("choose_" + plan.id)
-          }.navigationTitle("Today's workout")
-            .toolbar {
-              ToolbarItem(placement: .cancellationAction) { Button("Cancel") { choosing = false } }
+              if let slot {
+                editor = SetEditorRequest(
+                  log: log, exercise: exercise, index: slot.index, side: slot.side, warmup: false,
+                  initialValidity: .pain)
+              }
             }
-            .safeAreaInset(edge: .bottom) {
-              Text("Day names are labels from your original plan. Choose any workout for today.")
-                .font(.footnote).padding()
-            }
-        }.navigationViewStyle(.stack)
+          }
+        }
+      ) { exercise in
+        ExerciseExceptionSheet(
+          exercise: exercise, setup: setup, directory: model.directory, cue: model.cue
+        ) {
+          pendingPainExercise = exercise
+        }
       }
       .sheet(item: $editor) { request in
         SetEditor(
           log: request.log, exercise: request.exercise, index: request.index, side: request.side,
-          warmup: request.warmup, cue: model.cue
+          warmup: request.warmup, initialValidity: request.initialValidity,
+          skipOnly: request.skipOnly, cue: model.cue
         ) { set in
           Task { feedback(await controller.record(set)) }
         }.interactiveDismissDisabled()
@@ -191,13 +358,17 @@ struct WorkoutView: View {
       .onChange(of: controller.selectedID) {
         rest.clear()
         completionArmed = false
+        focusedExercise = nil
+        expanded = []
       }
       .onChange(of: controller.selected?.completed) { _, complete in
         if complete == true {
+          reviewCompleted = false
           rest.clear()
           completionArmed = false
         }
       }
+      .onChange(of: hub) { arm() }
       .onChange(of: visible) { arm() }
       .onChange(of: scenePhase) { arm() }
       .onChange(of: mode) {
@@ -206,7 +377,7 @@ struct WorkoutView: View {
         if mode != 0 { Task { await controller.load() } }
       }
       .onReceive(tick) { value in
-        guard visible, mode == 0, scenePhase == .active else { return }
+        guard visible, mode == 0, !hub, scenePhase == .active else { return }
         now = value
         if completionArmed, rest.remaining(now: value) == 0 {
           completionArmed = false
@@ -218,10 +389,14 @@ struct WorkoutView: View {
   private func arm() {
     now = Date()
     completionArmed =
-      visible && mode == 0 && scenePhase == .active && controller.selected?.completed == false
+      visible && mode == 0 && !hub && scenePhase == .active
+      && controller.selected?.completed == false
       && rest.remaining(now: now) > 0
   }
   private func choose(_ plan: ProgramSession) {
+    choosing = false
+    hub = false
+    reviewCompleted = false
     if let draft = controller.draft, draft.programId != plan.id {
       switchTarget = plan
       model.cue(.warning)
@@ -235,103 +410,394 @@ struct WorkoutView: View {
   @ViewBuilder private var logger: some View {
     if let log = controller.selected {
       VStack(alignment: .leading, spacing: 8) {
-        Text(log.plan.title).font(.title2.bold())
-        Text(
-          "\(log.plan.day) · \(log.endedEarly ? "Finished early" : log.completed ? "Completed" : "In progress")"
-        ).foregroundColor(.secondary)
-        Text("Manual records do not establish progression baselines.").font(.footnote)
-          .foregroundColor(.secondary)
+        if model.loggingLayout == "focus" {
+          Text("Manual log · " + log.plan.title).font(Stitch.font(14)).foregroundStyle(.secondary)
+        } else {
+          StitchLabel(text: "Manual workout • saved on device")
+          Text(log.plan.title).font(Stitch.font(28, .semibold))
+        }
+        Label(
+          log.endedEarly
+            ? "Finished early" : log.completed ? "Finished" : "Draft · Each accepted set is saved",
+          systemImage: log.completed ? "checkmark.circle" : "circle.dotted"
+        )
+        .font(Stitch.font(12)).foregroundStyle(.secondary)
+        if model.loggingLayout != "focus" {
+          Text("Manual records do not establish progression baselines.").font(Stitch.font(12))
+            .foregroundStyle(.secondary)
+        }
         if log.sets.contains(where: { $0.validity == .pain }) {
-          Text(
-            "Pain was recorded. Further sets for that exercise are stopped; remaining sets may be skipped."
-          ).foregroundColor(.red)
+          Label(
+            "Pain was recorded. Further sets for that exercise are stopped; remaining sets may be skipped.",
+            systemImage: "exclamationmark.triangle"
+          )
+          .foregroundStyle(.red)
         }
       }
-      ForEach(Array(log.plan.blocks.enumerated()), id: \.offset) { _, block in
-        VStack(alignment: .leading, spacing: 16) {
-          if block.isSuperset {
-            Text("Paired exercises · alternate working rounds").font(.headline)
-          }
-          ForEach(block.exercises) { exercise in
-            VStack(alignment: .leading, spacing: 8) {
-              Text(exercise.name).font(.headline)
-              Text(
-                "\(exercise.sets) × \(exercise.minReps)–\(exercise.maxReps) reps · RIR 2–3\(exercise.eachSide ? " · each side" : "")"
-              ).font(.subheadline).foregroundColor(.secondary)
-              ForEach(1...exercise.sets, id: \.self) { index in
-                ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) {
-                  side in
-                  setRow(log, exercise, index, side, false)
-                }
-              }
-              ForEach(log.sets.filter { $0.slot == exercise.id && $0.warmup }, id: \.key) { set in
-                setRow(log, exercise, set.index, set.side, true)
-              }
-              if !log.completed {
-                ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) {
-                  side in
-                  Button("Add warm-up\(side == .both ? "" : " · " + side.rawValue)") {
-                    let index =
-                      (log.sets.filter { $0.slot == exercise.id && $0.warmup && $0.side == side }
-                        .map(\.index).max() ?? 0) + 1
-                    editor = SetEditorRequest(
-                      log: log, exercise: exercise, index: index, side: side, warmup: true)
-                  }.disabled(controller.locked)
-                }
-              }
+      Picker("Logging layout", selection: model.loggingLayoutBinding) {
+        Text("Cards").tag("cards")
+        Text("Table").tag("table")
+        Text("Focus").tag("focus")
+      }.pickerStyle(.segmented).accessibilityIdentifier("logging_layout")
+      if model.loggingLayout == "focus" {
+        focusSession(log)
+      } else {
+        ForEach(Array(log.plan.blocks.enumerated()), id: \.offset) { blockIndex, block in
+          VStack(alignment: .leading, spacing: 16) {
+            if block.isSuperset {
+              Text("Superset · \(block.exercises.first?.sets ?? 0) paired rounds").font(.headline)
+              Text("Rest \(block.restSeconds) sec after both exercises").font(Stitch.font(12))
+                .foregroundStyle(.secondary)
             }
+            ForEach(Array(block.exercises.enumerated()), id: \.element.id) { index, exercise in
+              exerciseCard(
+                log, exercise, restSeconds: block.restSeconds,
+                prefix: block.isSuperset ? "\(index + 1) · " : "")
+            }
+            if !log.completed { restButton(block) }
           }
-          if !log.completed {
-            Button("Start \(block.restSeconds)s rest") {
-              do {
-                try rest.start(seconds: block.restSeconds, now: Date())
-                arm()
-                model.cue(.impact)
-              } catch { model.cue(.error) }
-            }.disabled(controller.locked)
-            Text(
-              block.isSuperset
-                ? "Start after both exercises."
-                : block.exercises.contains(where: \.eachSide)
-                  ? "Start after both sides." : "Start after the working set."
-            ).font(.caption).foregroundColor(.secondary)
-          }
-        }.padding().frame(maxWidth: .infinity, alignment: .leading).background(
-          Color(.secondarySystemGroupedBackground)
-        ).cornerRadius(16)
+        }
       }
       if !log.completed {
-        Button("Finish workout") { Task { feedback(await controller.finish()) } }.buttonStyle(
-          .borderedProminent
-        ).disabled(controller.locked)
+        Button("Finish workout") { Task { feedback(await controller.finish()) } }
+          .buttonStyle(StitchPrimary()).frame(minHeight: 52).disabled(controller.locked)
         Button("Finish early") {
           earlyFinish = true
           model.cue(.warning)
-        }.disabled(controller.locked)
+        }
+        .frame(minHeight: 44).disabled(controller.locked)
+      }
+      if log.completed {
+        Button("Next workout") {
+          controller.select(nil)
+          focusedExercise = nil
+        }
+        .buttonStyle(.borderedProminent).frame(minHeight: 52).disabled(controller.locked)
       }
       Button("Delete workout", role: .destructive) {
         deleting = log
         model.cue(.warning)
-      }.disabled(controller.locked)
-    } else {
-      Text("Ready when you are").font(.title2.bold())
-      Text("Choose today's workout or resume your saved draft.").foregroundColor(.secondary)
-      if let draft = controller.draft {
-        Button("Resume \(draft.plan.day)") { controller.select(draft.id) }.buttonStyle(
-          .borderedProminent
-        ).disabled(controller.locked)
       }
-      ForEach(ownerProgram) { plan in
+      .frame(minHeight: 44).disabled(controller.locked)
+    } else {
+      nextWorkout
+    }
+  }
+  private var nextWorkout: some View { dashboard }
+  private var dashboard: some View {
+    StitchDashboard(
+      logs: controller.logs, profile: controller.profile, draft: controller.draft,
+      minutes: setup.saved?.preferredMinutes, locked: controller.locked,
+      start: { choose(nextManualPlan(controller.logs, profile: controller.profile)) },
+      choose: { choosing = true }, duration: { durationSheet = true }, facility: profile,
+      open: { log in
+        controller.select(log.id)
+        hub = false
+        reviewCompleted = false
+      }
+    )
+    .onAppear { setup.load() }
+  }
+  private var sessionSelection: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Choose today’s workout").font(.title2.bold())
+      Text("Day names are labels from your original plan.").foregroundStyle(.secondary)
+      if let draft = controller.draft {
+        Button("Resume \(draft.plan.day)") {
+          controller.select(draft.id)
+          hub = false
+          choosing = false
+        }
+        .buttonStyle(.borderedProminent).frame(minHeight: 52).disabled(controller.locked)
+      }
+      ForEach(Array(ownerProgram.enumerated()), id: \.element.id) { index, plan in
         Button {
           choose(plan)
         } label: {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Start \(plan.day)").font(.headline)
-            Text(plan.title).foregroundColor(.secondary)
-          }.frame(maxWidth: .infinity, alignment: .leading).padding()
-        }.buttonStyle(.bordered).disabled(controller.locked).accessibilityIdentifier(
+          HStack(spacing: 14) {
+            Text(String(format: "%02d", index + 1)).font(.caption.bold())
+              .padding(10).background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Start \(plan.day)").font(.headline)
+              Text(plan.title).font(Stitch.font(14)).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(Stitch.font(12))
+          }.frame(maxWidth: .infinity, minHeight: 52, alignment: .leading).padding()
+            .background(
+              Stitch.card, in: RoundedRectangle(cornerRadius: 16))
+        }.buttonStyle(.plain).disabled(controller.locked).accessibilityIdentifier(
           "start_" + plan.id)
       }
+    }
+  }
+  private func exerciseCard(
+    _ log: ProgramLog, _ exercise: ProgramExercise, restSeconds: Int, prefix: String = ""
+  ) -> some View {
+    let slots = manualWorkingSlots(log).filter { $0.exercise.id == exercise.id }
+    let complete = slots.allSatisfy { $0.record(in: log) != nil }
+    let collapsed = model.loggingLayout == "cards" && complete && !expanded.contains(exercise.id)
+    return VStack(alignment: .leading, spacing: 12) {
+      Button {
+        if expanded.contains(exercise.id) {
+          expanded.remove(exercise.id)
+        } else {
+          expanded.insert(exercise.id)
+        }
+      } label: {
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            Text(prefix + exercise.name).font(Stitch.font(24, .semibold))
+            Text("\(slots.filter { $0.record(in: log) != nil }.count) of \(slots.count) recorded")
+              .font(Stitch.font(12)).foregroundStyle(.secondary)
+          }
+          Spacer()
+          if complete { Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint) }
+          if complete && model.loggingLayout == "cards" {
+            Image(systemName: collapsed ? "chevron.down" : "chevron.up")
+          }
+        }.frame(minHeight: 44)
+      }.buttonStyle(.plain).accessibilityLabel(
+        exercise.name + (collapsed ? ", completed, expand to correct" : ", set details"))
+      if collapsed {
+        Text(
+          slots.compactMap { $0.record(in: log) }.map {
+            $0.skipped ? "Skipped" : "\($0.load.map(formatPounds) ?? "BW") × \($0.reps ?? 0)"
+          }.joined(separator: " · ")
+        )
+        .font(Stitch.font(12)).foregroundStyle(.secondary)
+      } else {
+        HStack(alignment: .top, spacing: 8) {
+          StitchMetric(label: "Reps", value: "\(exercise.minReps)–\(exercise.maxReps)")
+          StitchMetric(label: "Work sets", value: "\(exercise.sets)")
+          StitchMetric(label: "Rest target", value: timerText(Double(restSeconds)))
+        }.padding(12).background(Stitch.inset, in: RoundedRectangle(cornerRadius: 10))
+        Text(
+          "2–3 RIR • Rest \(log.plan.blocks.first { $0.exercises.contains { $0.id == exercise.id } }?.isSuperset == true ? "after pair" : exercise.eachSide ? "after both sides" : "between sets")"
+        )
+        .font(Stitch.font(12)).foregroundStyle(Stitch.secondary)
+        lastTime(log, exercise)
+        if model.loggingLayout == "table" {
+          HStack {
+            Text("SET")
+            Spacer()
+            Text("LOAD · REPS · RIR · QUALITY")
+          }.font(.caption2).foregroundStyle(.secondary)
+        }
+        StitchLabel(text: "Set execution registry")
+        ForEach(slots) { slot in setRow(log, exercise, slot.index, slot.side, false) }
+        ForEach(log.sets.filter { $0.slot == exercise.id && $0.warmup }, id: \.key) { set in
+          setRow(log, exercise, set.index, set.side, true)
+        }
+        if !log.completed {
+          ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) { side in
+            Button("Add warm-up\(side == .both ? "" : " · " + side.rawValue)") {
+              let index =
+                (log.sets.filter { $0.slot == exercise.id && $0.warmup && $0.side == side }.map(
+                  \.index
+                ).max() ?? 0) + 1
+              editor = SetEditorRequest(
+                log: log, exercise: exercise, index: index, side: side, warmup: true)
+            }.frame(minHeight: 44).disabled(controller.locked)
+          }
+          Button("Change exercise", systemImage: "arrow.triangle.2.circlepath") {
+            exception = exercise
+          }
+          .frame(minHeight: 44).disabled(controller.locked || complete)
+        }
+      }
+    }.padding().frame(maxWidth: .infinity, alignment: .leading)
+      .background(Stitch.card, in: RoundedRectangle(cornerRadius: 20))
+  }
+  @ViewBuilder private func lastTime(_ log: ProgramLog, _ exercise: ProgramExercise) -> some View {
+    let contexts = log.sets.filter { $0.slot == exercise.id && !$0.warmup && !$0.skipped }
+    if let context = contexts.last {
+      let previous = previousMatchingSets(for: context, in: log, history: controller.logs)
+      if let first = previous.first {
+        VStack(alignment: .leading, spacing: 4) {
+          Label(
+            "Last time, same setup · \(first.log.startedAt.formatted(date: .abbreviated, time: .omitted))",
+            systemImage: "clock.arrow.circlepath")
+          Text(
+            "\(context.setup) · \(conventionLabel(context.convention)) · \(context.side.rawValue)")
+          Text(previous.map { setSummary($0.set) }.joined(separator: "\n"))
+          Text("Your recorded history, not a target.")
+        }.font(Stitch.font(12)).foregroundStyle(.secondary)
+      } else {
+        Text("No previous valid sets for this exact setup.").font(Stitch.font(12)).foregroundStyle(
+          .secondary)
+      }
+    } else {
+      let previous = previousExerciseHistory(for: exercise, in: log, history: controller.logs)
+      if previous.isEmpty {
+        Text("No previous valid sets for this exercise. Record your exact setup when logging.")
+          .font(Stitch.font(12)).foregroundStyle(.secondary)
+      } else {
+        DisclosureGroup("Previous setups · your history") {
+          ForEach(previous) { series in
+            if let last = series.points.last {
+              VStack(alignment: .leading, spacing: 4) {
+                Text(series.key.setup).font(.caption.bold())
+                Text(
+                  "\(conventionLabel(series.key.convention)) · \(series.key.side.rawValue) · \(last.log.startedAt.formatted(date: .abbreviated, time: .omitted))"
+                )
+                Text(
+                  series.points.filter { $0.log.id == last.log.id }.map { setSummary($0.set) }
+                    .joined(separator: "\n"))
+              }.font(Stitch.font(12)).foregroundStyle(.secondary).padding(.vertical, 4)
+            }
+          }
+          Text("Previous actuals, not targets. Confirm the exact setup when you record a set.")
+            .font(Stitch.font(12)).foregroundStyle(.secondary)
+        }
+      }
+    }
+  }
+  private func focusSession(_ log: ProgramLog) -> some View {
+    let slots = manualWorkingSlots(log)
+    let next = slots.first { $0.record(in: log) == nil }
+    let exercise =
+      log.exercises.first { $0.id == focusedExercise } ?? next?.exercise ?? log.exercises[0]
+    let index = log.exercises.firstIndex { $0.id == exercise.id } ?? 0
+    let block = log.plan.blocks.first { $0.exercises.contains { $0.id == exercise.id } }!
+    return VStack(alignment: .leading, spacing: 16) {
+      HStack {
+        Text("Exercise \(index + 1) of \(log.exercises.count)").font(Stitch.font(14))
+        Spacer()
+        Button("All sets") { model.loggingLayoutBinding.wrappedValue = "cards" }.frame(
+          minHeight: 44)
+      }
+      ProgressView(
+        value: Double(slots.filter { $0.record(in: log) != nil }.count), total: Double(slots.count)
+      )
+      .accessibilityLabel("Recorded working sets")
+      VStack(alignment: .leading, spacing: 12) {
+        Text(exercise.name).font(.title2.bold())
+        Text(
+          "\(exercise.sets) × \(exercise.minReps)–\(exercise.maxReps) · 2–3 RIR\(exercise.eachSide ? " · each side" : "")"
+        )
+        .font(Stitch.font(14)).foregroundStyle(.secondary)
+        lastTime(log, exercise)
+        LazyVGrid(
+          columns: [GridItem(.adaptive(minimum: focusTileWidth), alignment: .top)],
+          alignment: .leading,
+          spacing: 12
+        ) {
+          ForEach(slots.filter { $0.exercise.id == exercise.id }) { slot in
+            let saved = slot.record(in: log)
+            Button {
+              editor = SetEditorRequest(
+                log: log, exercise: exercise, index: slot.index, side: slot.side, warmup: false)
+            } label: {
+              VStack(alignment: .leading, spacing: 8) {
+                Text("Set \(slot.index)\(slot.side == .both ? "" : " · " + slot.side.rawValue)")
+                  .font(.subheadline.bold())
+                Text(saved.map(setSummary) ?? "Not recorded").font(Stitch.font(12))
+              }.frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading).padding(12)
+                .background(
+                  saved == nil
+                    ? Color.accentColor.opacity(0.1) : Stitch.card,
+                  in: RoundedRectangle(cornerRadius: 16))
+            }.buttonStyle(.plain).disabled(controller.locked || (log.completed && saved == nil))
+              .accessibilityIdentifier(
+                "set_\(exercise.id)_\(slot.index)_\(slot.side.rawValue)_false")
+          }
+        }
+        if log.completed && log.sets.contains(where: { $0.slot == exercise.id && $0.warmup }) {
+          DisclosureGroup("Recorded warm-ups") {
+            ForEach(log.sets.filter { $0.slot == exercise.id && $0.warmup }, id: \.key) { set in
+              setRow(log, exercise, set.index, set.side, true)
+            }
+          }
+        }
+        if !log.completed {
+          restButton(block)
+          if let target = slots.first(where: {
+            $0.exercise.id == exercise.id && $0.record(in: log) == nil
+          }) {
+            ViewThatFits(in: .horizontal) {
+              HStack {
+                focusSkip(log, target)
+                focusRecord(log, target)
+              }
+              VStack(alignment: .leading) {
+                focusRecord(log, target)
+                focusSkip(log, target)
+              }
+            }
+          }
+          DisclosureGroup("Warm-ups and exercise options") {
+            Text("Manual records do not establish progression baselines.").font(Stitch.font(12))
+              .foregroundStyle(.secondary)
+            ForEach(log.sets.filter { $0.slot == exercise.id && $0.warmup }, id: \.key) { set in
+              setRow(log, exercise, set.index, set.side, true)
+            }
+            ForEach(exercise.eachSide ? [LoggedSide.left, .right] : [.both], id: \.rawValue) {
+              side in
+              Button("Add warm-up\(side == .both ? "" : " · " + side.rawValue)") {
+                let index =
+                  (log.sets.filter { $0.slot == exercise.id && $0.warmup && $0.side == side }.map(
+                    \.index
+                  ).max() ?? 0) + 1
+                editor = SetEditorRequest(
+                  log: log, exercise: exercise, index: index, side: side, warmup: true)
+              }.frame(minHeight: 44).disabled(controller.locked)
+            }
+            Button("Change exercise") { exception = exercise }.frame(minHeight: 44)
+              .disabled(
+                controller.locked
+                  || !slots.contains { $0.exercise.id == exercise.id && $0.record(in: log) == nil })
+          }
+        }
+      }
+      HStack {
+        Button("Previous") { focusedExercise = log.exercises[index - 1].id }
+          .disabled(index == 0).frame(minHeight: 44)
+        Spacer()
+        Button("Next") { focusedExercise = log.exercises[index + 1].id }
+          .disabled(index + 1 == log.exercises.count).frame(minHeight: 44)
+      }
+      if let next, next.exercise.id != exercise.id {
+        Button("Next unrecorded · \(next.exercise.name)") { focusedExercise = next.exercise.id }
+          .frame(minHeight: 44)
+      }
+      if index + 1 < log.exercises.count {
+        Text("Up next · \(log.exercises[index + 1].name)").font(Stitch.font(12)).foregroundStyle(
+          .secondary)
+      }
+    }
+  }
+  private func focusRecord(_ log: ProgramLog, _ slot: ManualSetSlot) -> some View {
+    Button("Record set \(slot.index)\(slot.side == .both ? "" : " · " + slot.side.rawValue)") {
+      editor = SetEditorRequest(
+        log: log, exercise: slot.exercise, index: slot.index, side: slot.side, warmup: false)
+    }.buttonStyle(StitchPrimary()).controlSize(.large).frame(minHeight: 52).disabled(
+      controller.locked)
+  }
+  private func focusSkip(_ log: ProgramLog, _ slot: ManualSetSlot) -> some View {
+    Button("Skip set") {
+      editor = SetEditorRequest(
+        log: log, exercise: slot.exercise, index: slot.index, side: slot.side, warmup: false,
+        skipOnly: true)
+    }.buttonStyle(.bordered).controlSize(.large).frame(minHeight: 52).disabled(controller.locked)
+  }
+  private func restButton(_ block: ProgramBlock) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Button("Start \(block.restSeconds)s rest", systemImage: "timer") {
+        do {
+          try rest.start(seconds: block.restSeconds, now: Date())
+          restDuration = block.restSeconds
+          arm()
+          model.cue(.impact)
+        } catch { model.cue(.error) }
+      }.frame(minHeight: 44).disabled(controller.locked)
+      Text(
+        block.isSuperset
+          ? "Start after both exercises."
+          : block.exercises.contains(where: \.eachSide)
+            ? "Start after both sides." : "Start after the working set."
+      )
+      .font(Stitch.font(12)).foregroundStyle(.secondary)
     }
   }
   private func setRow(
@@ -340,15 +806,60 @@ struct WorkoutView: View {
     let saved = log.sets.first {
       $0.slot == exercise.id && $0.index == index && $0.side == side && $0.warmup == warmup
     }
+    let next = manualWorkingSlots(log).first { $0.record(in: log) == nil }
+    let active =
+      !warmup && next?.exercise.id == exercise.id && next?.index == index && next?.side == side
     return Button {
       editor = SetEditorRequest(
         log: log, exercise: exercise, index: index, side: side, warmup: warmup)
     } label: {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("\(warmup ? "Warm-up" : "Set") \(index)\(side == .both ? "" : " · " + side.rawValue)")
-        Text(saved.map(setSummary) ?? "Not recorded").font(.subheadline).foregroundColor(.secondary)
-      }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
-    }.disabled(controller.locked || (log.completed && saved == nil))
+      ViewThatFits(in: .horizontal) {
+        if model.loggingLayout == "table" {
+          HStack {
+            Text("\(warmup ? "Warm-up " : "")\(index)\(side == .both ? "" : " · " + side.rawValue)")
+              .font(.subheadline.bold())
+            Spacer()
+            if let saved, !saved.skipped {
+              VStack(alignment: .trailing, spacing: 4) {
+                HStack(spacing: 20) {
+                  Text(saved.load.map(formatPounds) ?? "BW").frame(
+                    minWidth: 32, alignment: .trailing)
+                  Text("\(saved.reps ?? 0)").frame(minWidth: 28, alignment: .trailing)
+                  Text(saved.rir.map(String.init) ?? "—").frame(minWidth: 28, alignment: .trailing)
+                }.monospacedDigit()
+                Text(
+                  "\(conventionLabel(saved.convention)) · \(saved.validity.rawValue.capitalized)"
+                ).font(.caption2).foregroundStyle(.secondary)
+              }
+            } else {
+              Text(
+                saved?.skipped == true
+                  ? "Skipped" : active ? "Not recorded · Record" : "Not recorded"
+              ).font(Stitch.font(14))
+            }
+          }
+        }
+        VStack(alignment: .leading, spacing: 4) {
+          HStack {
+            Text(
+              "\(warmup ? "Warm-up" : "Set") \(index)\(side == .both ? "" : " · " + side.rawValue)"
+            ).font(.subheadline.weight(.semibold))
+            Spacer()
+            Image(
+              systemName: saved == nil
+                ? "plus.circle"
+                : saved?.skipped == true
+                  ? "forward.end"
+                  : saved?.validity == .valid ? "checkmark.circle" : "exclamationmark.circle")
+          }
+          Text(saved.map(setSummary) ?? (active ? "Not recorded · Tap to record" : "Not recorded"))
+            .font(Stitch.font(14)).foregroundStyle(.secondary)
+        }
+      }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(10)
+        .background(
+          active ? Stitch.peach.opacity(0.4) : Stitch.inset,
+          in: RoundedRectangle(cornerRadius: 12))
+    }.buttonStyle(.plain).disabled(controller.locked || (log.completed && saved == nil))
       .accessibilityIdentifier("set_\(exercise.id)_\(index)_\(side.rawValue)_\(warmup)")
   }
   private func pendingNotice(_ change: PendingProgramLogChange) -> some View {
@@ -362,8 +873,9 @@ struct WorkoutView: View {
     case .deletion: title = "Unconfirmed deletion"
     }
     return VStack(alignment: .leading, spacing: 8) {
-      Label(title, systemImage: "exclamationmark.triangle").font(.headline)
-      Text("\(change.log.plan.day) · \(change.log.plan.title)").font(.subheadline)
+      Label(title, systemImage: "exclamationmark.triangle.fill").font(Stitch.font(18, .semibold))
+        .foregroundStyle(.red)
+      Text("\(change.log.plan.day) · \(change.log.plan.title)").font(Stitch.font(14))
       ForEach(change.submittedSets) { set in
         VStack(alignment: .leading, spacing: 4) {
           Text(change.log.exercises.first { $0.id == set.slot }?.name ?? set.slot).font(
@@ -375,47 +887,38 @@ struct WorkoutView: View {
           Text("Setup: \(set.setup)")
           Text(conventionLabel(set.convention))
           Text(setSummary(set))
-        }.font(.subheadline)
+        }.font(Stitch.font(14))
       }
       if change.kind == .start {
-        Text("Started \(change.log.startedAt.formatted()).").font(.subheadline)
+        Text("Started \(change.log.startedAt.formatted()).").font(Stitch.font(14))
       } else if change.kind == .finish || change.kind == .earlyFinish {
         if let completedAt = change.log.completedAt {
-          Text("Finish time: \(completedAt.formatted()).").font(.subheadline)
+          Text("Finish time: \(completedAt.formatted()).").font(Stitch.font(14))
         }
-        Text("\(change.log.sets.count) recorded sets retained.").font(.subheadline)
+        Text("\(change.log.sets.count) recorded sets retained.").font(Stitch.font(14))
       } else if change.kind == .deletion {
         Text(
           "Started \(change.log.startedAt.formatted()) · \(change.log.sets.count) recorded sets."
-        ).font(.subheadline)
+        ).font(Stitch.font(14))
       }
-      Text("This action is not confirmed. Retry uses these same values.").font(.footnote)
+      Text("This action is not confirmed. Retry uses these same values.").font(Stitch.font(12))
     }.padding().frame(maxWidth: .infinity, alignment: .leading)
       .background(Color.orange.opacity(0.12)).cornerRadius(12)
       .accessibilityElement(children: .combine)
       .accessibilityIdentifier("unconfirmed_workout_action")
   }
   private func timerPanel(_ log: ProgramLog) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(
-        "\(log.completed ? "Total time" : "Workout time")  \(timerText(sessionElapsed(start: log.startedAt, end: log.completedAt, now: now)))"
-      ).monospacedDigit()
-      if !log.completed && rest.started {
-        HStack {
-          Text(
-            rest.remaining(now: now) == 0
-              ? "Rest complete" : "Rest  \(timerText(rest.remaining(now: now)))"
-          ).monospacedDigit()
-          Button("Clear rest") {
-            rest.clear()
-            completionArmed = false
-            model.cue(.selection)
-          }
-        }
-      }
-    }.font(.subheadline).frame(maxWidth: .infinity, alignment: .leading).padding().background(
-      .regularMaterial)
+    WorkoutTimerCapsule(
+      elapsed: sessionElapsed(start: log.startedAt, end: log.completedAt, now: now),
+      remaining: rest.remaining(now: now), duration: restDuration, started: rest.started,
+      completed: log.completed
+    ) {
+      rest.clear()
+      completionArmed = false
+      model.cue(.selection)
+    }
   }
+
 }
 
 func setSummary(_ set: ProgramSet) -> String {

@@ -6,8 +6,8 @@ final class HistoryNavigationTests: XCTestCase {
     let name = "history_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     app.launchArguments = ["--fixture-directory", name, "--reset-fixture"]
     app.launch()
-    XCTAssertTrue(app.buttons["start_monday"].waitForExistence(timeout: 20))
-    app.buttons["start_monday"].tap()
+    XCTAssertTrue(app.buttons["start_next_workout"].waitForExistence(timeout: 20))
+    app.buttons["start_next_workout"].tap()
     let firstSet = app.buttons["set_incline_dumbbell_press_1_both_false"]
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     firstSet.tap()
@@ -34,7 +34,7 @@ final class HistoryNavigationTests: XCTestCase {
     app.buttons["Finish early"].tap()
     app.alerts.buttons["Finish early"].tap()
     top(app, button: "History")
-    app.buttons["History"].tap()
+    app.buttons["tab_history"].tap()
     let search = app.textFields["history_search"]
     XCTAssertTrue(search.waitForExistence(timeout: 10))
     search.tap()
@@ -47,11 +47,11 @@ final class HistoryNavigationTests: XCTestCase {
     XCTAssertTrue(saved.waitForExistence(timeout: 10))
     saved.tap()
     top(app, button: "History")
-    app.buttons["History"].tap()
+    app.buttons["tab_history"].tap()
     XCTAssertTrue(search.waitForExistence(timeout: 10))
     XCTAssertEqual(search.value as? String, "Upper")
     XCTAssertTrue(app.buttons["history_range"].label.contains("90 days"))
-    app.buttons["Graphs"].tap()
+    app.segmentedControls["history_mode"].buttons["Recorded trends"].tap()
     let latest = app.staticTexts["graph_latest_incline_dumbbell_press"]
     XCTAssertTrue(latest.waitForExistence(timeout: 10))
     XCTAssertEqual(latest.label, "Latest: 20.00 lb")
@@ -63,9 +63,10 @@ final class HistoryNavigationTests: XCTestCase {
     metric.buttons["Reps"].tap()
     XCTAssertEqual(latest.label, "Latest: 8 reps")
     top(app, button: "Log")
-    app.buttons["Log"].tap()
-    top(app, button: "Graphs")
-    app.buttons["Graphs"].tap()
+    app.buttons["tab_workout"].tap()
+    top(app, button: "History")
+    app.buttons["tab_history"].tap()
+    app.segmentedControls["history_mode"].buttons["Recorded trends"].tap()
     XCTAssertTrue(latest.waitForExistence(timeout: 10))
     XCTAssertEqual(latest.label, "Latest: 8 reps")
     XCTAssertEqual(search.value as? String, "Upper")
@@ -75,10 +76,8 @@ final class HistoryNavigationTests: XCTestCase {
     add(attachment)
   }
   @MainActor private func top(_ app: XCUIApplication, button: String) {
-    for _ in 0..<20 {
-      if app.buttons[button].isHittable { break }
-      app.swipeDown()
-    }
-    XCTAssertTrue(app.buttons[button].isHittable)
+    let target = app.buttons[button == "History" ? "tab_history" : "tab_workout"]
+    XCTAssertTrue(target.isHittable)
+    XCTAssertTrue(target.isEnabled)
   }
 }

@@ -6,6 +6,7 @@ import WorkoutPersistence
 @main
 struct AdaptiveWorkoutApp: App {
   @StateObject private var model = AppModel()
+  init() { Stitch.registerFont() }
   var body: some Scene {
     WindowGroup {
       Group {
@@ -33,6 +34,8 @@ final class AppModel: ObservableObject {
   @Published var error: String?
   @Published private(set) var appearance = "system"
   @Published private(set) var hapticsEnabled = true
+  @Published private(set) var loggingLayout = "cards"
+  @Published private(set) var lastTrainedEnabled = false
   private var appearanceRepository: SqliteAppearanceRepository?
   private var preferences = UserDefaults.standard
   private let hostedIdentity = UUID().uuidString
@@ -71,6 +74,9 @@ final class AppModel: ObservableObject {
       let stores = try LocalAppStores(directory: directory)
       controller = ProgramLogController(repository: stores.programLogs)
       hapticsEnabled = preferences.object(forKey: "adaptiveWorkout.hapticsEnabled") as? Bool ?? true
+      let layout = preferences.string(forKey: "adaptiveWorkout.loggingLayout") ?? "cards"
+      loggingLayout = ["cards", "table", "focus"].contains(layout) ? layout : "cards"
+      lastTrainedEnabled = preferences.bool(forKey: "adaptiveWorkout.lastTrainedEnabled")
       applyAppearance(stores.appearance)
     } catch { self.error = "Could not open local storage. Existing data has been preserved." }
   }
@@ -116,6 +122,27 @@ final class AppModel: ObservableObject {
         self.preferences.set(value, forKey: "adaptiveWorkout.hapticsEnabled")
         self.hapticsEnabled = value
         if value { self.cue(.selection) }
+      })
+  }
+  var loggingLayoutBinding: Binding<String> {
+    Binding(
+      get: { self.loggingLayout },
+      set: { value in
+        guard ["cards", "table", "focus"].contains(value), value != self.loggingLayout else {
+          return
+        }
+        self.preferences.set(value, forKey: "adaptiveWorkout.loggingLayout")
+        self.loggingLayout = value
+        self.cue(.selection)
+      })
+  }
+  var lastTrainedBinding: Binding<Bool> {
+    Binding(
+      get: { self.lastTrainedEnabled },
+      set: { value in
+        self.preferences.set(value, forKey: "adaptiveWorkout.lastTrainedEnabled")
+        self.lastTrainedEnabled = value
+        self.cue(.selection)
       })
   }
   func cue(_ kind: Cue) {

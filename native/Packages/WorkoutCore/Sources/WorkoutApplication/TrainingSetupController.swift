@@ -37,7 +37,8 @@ import WorkoutDomain
     } catch { self.error = "Could not open setup. Try again." }
   }
   private func next(
-    at: Date, days: [Int]? = nil, minutes: Int? = nil, exclusions: [String]? = nil,
+    at: Date, days: [Int]? = nil, minutes: Int? = nil, replaceMinutes: Bool = false,
+    exclusions: [String]? = nil,
     equipment: [EquipmentSetup]? = nil, loads: [StartingLoad]? = nil,
     reports: [ReportedWorkingSetup]? = nil, rehearsals: [RehearsalConfirmation]? = nil
   ) throws -> TrainingSetup {
@@ -47,7 +48,7 @@ import WorkoutDomain
       rehearsalConfirmations: rehearsals ?? saved?.rehearsalConfirmations ?? [],
       profileId: profileId, revision: (saved?.revision ?? -1) + 1, updatedAt: at,
       trainingDays: days ?? saved?.trainingDays ?? [],
-      preferredMinutes: minutes ?? saved?.preferredMinutes,
+      preferredMinutes: replaceMinutes ? minutes : (minutes ?? saved?.preferredMinutes),
       supportedCapabilities: saved?.supportedCapabilities,
       unsupportedCapabilities: saved?.unsupportedCapabilities, limitations: saved?.limitations,
       excludedVariations: exclusions ?? saved?.excludedVariations ?? [],
@@ -72,9 +73,32 @@ import WorkoutDomain
     guard !locked, loaded else { return false }
     do {
       let text = minutes.trimmingCharacters(in: .whitespacesAndNewlines)
-      guard text.range(of: "^[0-9]+$", options: .regularExpression) != nil, let value = Int(text)
-      else { throw SetupException("invalid_duration") }
-      return try save(next(at: now(), days: days, minutes: value, exclusions: exclusions))
+      let value: Int?
+      if text.isEmpty {
+        value = nil
+      } else {
+        guard text.range(of: "^[0-9]+$", options: .regularExpression) != nil, let parsed = Int(text)
+        else { throw SetupException("invalid_duration") }
+        value = parsed
+      }
+      return try save(
+        next(at: now(), days: days, minutes: value, replaceMinutes: true, exclusions: exclusions))
+    } catch { return invalid() }
+  }
+  /// Change only the duration; nil explicitly means no time limit.
+  @discardableResult public func saveDuration(_ minutes: Int?) -> Bool {
+    guard !locked, loaded else { return false }
+    do { return try save(next(at: now(), minutes: minutes, replaceMinutes: true)) } catch {
+      return invalid()
+    }
+  }
+  /// Preserve every other saved preference and verification when excluding a variation.
+  @discardableResult public func excludeVariation(_ variation: String) -> Bool {
+    guard !locked, loaded else { return false }
+    do {
+      var values = saved?.excludedVariations ?? []
+      if !values.contains(variation) { values.append(variation) }
+      return try save(next(at: now(), exclusions: values))
     } catch { return invalid() }
   }
   @discardableResult public func saveMachine(

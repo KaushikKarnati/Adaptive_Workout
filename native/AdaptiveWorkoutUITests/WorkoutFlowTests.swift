@@ -6,7 +6,7 @@ final class WorkoutFlowTests: XCTestCase {
     let name = "flow_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     app.launchArguments = ["--fixture-directory", name, "--reset-fixture"]
     app.launch()
-    let start = app.buttons["start_monday"]
+    let start = app.buttons["start_next_workout"]
     XCTAssertTrue(start.waitForExistence(timeout: 20))
     start.tap()
     let firstSet = app.buttons["set_incline_dumbbell_press_1_both_false"]
@@ -30,12 +30,14 @@ final class WorkoutFlowTests: XCTestCase {
     app.buttons["save_set"].tap()
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     XCTAssertTrue(firstSet.label.contains("20 lb"))
-    app.tabBars.buttons["Settings"].tap()
-    app.tabBars.buttons["Workout"].tap()
+    app.buttons["tab_profile"].tap()
+    app.buttons["tab_workout"].tap()
     XCTAssertTrue(firstSet.exists)
     app.terminate()
     app.launchArguments = ["--fixture-directory", name]
     app.launch()
+    XCTAssertTrue(app.buttons["resume_workout"].waitForExistence(timeout: 20))
+    app.buttons["resume_workout"].tap()
     XCTAssertTrue(firstSet.waitForExistence(timeout: 20))
     XCTAssertTrue(firstSet.label.contains("20 lb"))
     firstSet.tap()
@@ -53,12 +55,12 @@ final class WorkoutFlowTests: XCTestCase {
     shot.name = "Native workout"
     shot.lifetime = .keepAlways
     add(shot)
-    app.tabBars.buttons["Settings"].tap()
+    app.buttons["tab_profile"].tap()
     let settings = XCTAttachment(screenshot: app.screenshot())
     settings.name = "Native settings"
     settings.lifetime = .keepAlways
     add(settings)
-    app.tabBars.buttons["Workout"].tap()
+    app.buttons["tab_workout"].tap()
     for _ in 0..<18 {
       if app.buttons["Finish early"].isHittable { break }
       app.swipeUp()
@@ -67,16 +69,17 @@ final class WorkoutFlowTests: XCTestCase {
     app.buttons["Finish early"].tap()
     app.alerts.buttons["Finish early"].tap()
     for _ in 0..<18 {
-      if app.buttons["Graphs"].isHittable { break }
+      if app.buttons["tab_history"].isHittable { break }
       app.swipeDown()
     }
-    app.buttons["Graphs"].tap()
+    app.buttons["tab_history"].tap()
+    app.segmentedControls["history_mode"].buttons["Recorded trends"].tap()
     XCTAssertTrue(app.staticTexts["Incline Dumbbell Press"].waitForExistence(timeout: 10))
     let graph = XCTAttachment(screenshot: app.screenshot())
     graph.name = "Native graph"
     graph.lifetime = .keepAlways
     add(graph)
-    app.buttons["History"].tap()
+    app.segmentedControls["history_mode"].buttons["Workouts"].tap()
     XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 10))
     app.buttons["Delete"].tap()
     app.alerts.buttons["Delete"].tap()
@@ -88,8 +91,8 @@ final class WorkoutFlowTests: XCTestCase {
     let name = "settings_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
     app.launchArguments = ["--fixture-directory", name, "--reset-fixture"]
     app.launch()
-    XCTAssertTrue(app.buttons["start_monday"].waitForExistence(timeout: 20))
-    app.tabBars.buttons["Settings"].tap()
+    XCTAssertTrue(app.buttons["start_next_workout"].waitForExistence(timeout: 20))
+    app.buttons["tab_profile"].tap()
     app.buttons["Appearance and feedback"].tap()
     app.buttons["appearance_picker"].tap()
     app.buttons["Light"].tap()
@@ -101,17 +104,27 @@ final class WorkoutFlowTests: XCTestCase {
     let minutes = app.textFields["Preferred workout minutes"]
     XCTAssertTrue(minutes.waitForExistence(timeout: 10))
     minutes.tap()
-    minutes.typeText("45")
-    app.tabBars.buttons["Workout"].tap()
-    app.tabBars.buttons["Settings"].tap()
+    minutes.typeText("4")
+    XCTAssertEqual(minutes.value as? String, "4")
+    minutes.typeText("5")
     XCTAssertEqual(minutes.value as? String, "45")
-    app.buttons["Save preferences"].tap()
+    app.buttons["tab_workout"].tap()
+    app.buttons["tab_profile"].tap()
+    XCTAssertEqual(minutes.value as? String, "45")
+    XCTAssertFalse(app.keyboards.firstMatch.exists)
+    let savePreferences = app.buttons["Save preferences"]
+    for _ in 0..<10 {
+      if savePreferences.isHittable { break }
+      app.swipeUp()
+    }
+    XCTAssertTrue(savePreferences.isHittable)
+    savePreferences.tap()
     XCTAssertTrue(app.staticTexts["Saved on this device."].waitForExistence(timeout: 10))
     app.terminate()
     app.launchArguments = ["--fixture-directory", name]
     app.launch()
-    XCTAssertTrue(app.buttons["start_monday"].waitForExistence(timeout: 20))
-    app.tabBars.buttons["Settings"].tap()
+    XCTAssertTrue(app.buttons["start_next_workout"].waitForExistence(timeout: 20))
+    app.buttons["tab_profile"].tap()
     app.buttons["Appearance and feedback"].tap()
     XCTAssertTrue(app.buttons["appearance_picker"].label.contains("Light"))
     app.buttons["Training setup"].tap()

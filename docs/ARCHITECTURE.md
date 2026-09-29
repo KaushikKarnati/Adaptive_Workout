@@ -212,15 +212,13 @@ Schema-1 upgrades preserve existing payloads. See [ADR 0017](decisions/0017-dele
 
 ## Primary app entry
 
-The normal app entry is `AdaptiveWorkoutApp` with `HomeView`, a persistent two-tab shell: Workout
-and Settings. Workout contains the manual logger and inline searchable history
-and graphs; opening a saved record selects it in the same logger. Settings has
-lazily created, state-preserving disclosures for appearance and haptics, program,
-training setup and gym inventory. Embedded content does not push extra screens;
-small editing/confirmation dialogs remain local to the two destinations. Switching
-tabs retains workout state and unfinished settings fields. Practice screens remain
-available through explicit development/test injection only; their repositories
-and saved data are preserved. Hiding practice does not delete it.
+The normal app entry is `AdaptiveWorkoutApp` with `HomeView`, a persistent
+Workout/Plan/History/Profile shell. Workout presents the dashboard, manual logger
+and committed summary; History source links open that same logger. Profile keeps
+state-preserving controls for appearance/haptics, program, training setup and gym
+inventory. Switching destinations retains workout state and unfinished settings
+fields. Editing sheets remain local. Practice is available only through explicit
+development/test injection; hiding it does not delete its repositories or data.
 
 ### Manual session timing
 
@@ -233,6 +231,49 @@ Switching tabs retains its deadline; hidden/background views do not tick or emit
 completion feedback. Returning updates the display without a catch-up haptic.
 Neither timer participates in deterministic training rules. See UI_DESIGN.md
 for background, restart and notification limitations.
+
+### Mockup presentation and manual shortcuts
+
+The September 25 mockup adaptation added native editing/exception sheets and the
+review-gated Last trained panel in `WorkoutComponents.swift`. The September 28
+Stitch revision retains those interactions and replaces the glass capsule with
+an opaque card dock. `HomeView` owns custom labeled navigation and keeps the
+workout view mounted. All timing remains presentation-only and uses the existing
+explicit `RestCountdown` state.
+
+`AppModel` stores the selected Cards/Table/Focus layout and an off-by-default
+Last trained opt-in in local UserDefaults. The three layouts operate on the same
+manual records and controller actions; changing layout never changes a
+prescription. `WorkoutPresentation.swift` contains pure projections for ordered
+working slots, the next manual plan, exact-context previous valid sets, and a
+last-trained projection accepting explicit reviewed mappings, date and calendar.
+The live Last trained screen has no production reviewed mapping and displays
+review unavailability, not calculated muscle-area counts or readiness.
+
+The next manual plan favors a resumable draft and otherwise advances from the
+latest terminal manual session. It is not the calendar planning policy or a
+generated recommendation. The current UI explains its manual ordering and the
+remaining equipment, baseline, catalog and safety gates. Previous-set comparisons
+stay scoped to profile, program version, slot, variant, exact setup, convention
+and side; they are descriptive history, never proposed targets.
+
+HomeView owns one shared `SetupModel` used by Workout duration/exception sheets
+and Settings. `TrainingSetupController.saveDuration` explicitly supports nil for
+No time limit; duration remains advisory with no estimate or time-fitting engine.
+`excludeVariation` preserves other saved preferences and verification records.
+These actions retain repository acknowledgements and pending-action retry
+semantics. General equipment checklist observations remain separate from exact
+training setup verification.
+
+The exception sheet does not register automatic replacement orchestration.
+Equipment unavailability links to the gym checklist, ordinary replacement choices
+show the missing review gates, and persistent exclusions name the exact
+variation. Pain queues the existing actual-set editor after sheet dismissal;
+saving a Pain actual uses the existing manual-record exercise-stop rule. Merely
+opening or canceling this editor does not persist a safety event. No clinical
+review, symptom classifier or generated-workout safety restriction is supplied
+by the presentation change. See [Interface design](UI_DESIGN.md) for the
+section-1/section-2 mockup mapping and outstanding capability boundaries.
 
 ## Gym location inventories
 
@@ -266,3 +307,15 @@ unverified. The Flutter reference is retained in Git history, not as a required
 runtime for the maintained app.
 
 Independent appearance-store failures are reported with a retry while workout storage remains usable. Pending manual actions expose their submitted values separately from committed records until exact reload acknowledgement succeeds.
+
+### Stitch presentation revision — September 28
+
+The four-destination Workout/Plan/History/Profile shell supersedes the two-tab
+entry described above. `HomeView` retains mounted workout and profile state;
+`WorkoutView` owns dashboard/active/summary presentation and existing controller
+actions. `StitchDesign.swift` supplies reusable native visual components and a
+bundled licensed font. The completion view appears only for committed terminal
+records and routes corrections back to the existing editor. The new design does
+not add a persistence schema, generated-workout caller, analytics algorithm,
+network dependency or new safety policy. See the Stitch section of UI_DESIGN.md
+for intentional differences between sample screen content and supported data.

@@ -193,13 +193,7 @@ public struct ProgramLog: Equatable, Sendable, Identifiable {
     else {
       throw LoggingException(set.skipped ? "invalid_skip" : "invalid_actuals")
     }
-    let bodyweight = ["unassisted_pull_up", "hanging_knee_raise", "ab_wheel_rollout"].contains(
-      set.variant)
-    let dumbbell = ["incline_dumbbell_press", "dumbbell_shoulder_press"].contains(set.variant)
-    let assisted = set.variant == "assisted_machine_pull_up"
-    guard (set.convention == .bodyweight) == bodyweight,
-      (set.convention == .perDumbbell) == dumbbell,
-      (set.convention == .assistance) == assisted
+    guard manualLoadConventions(for: e, variant: set.variant).contains(set.convention)
     else { throw LoggingException("invalid_load_convention") }
     if set.skipped {
       guard set.load == nil, set.reps == nil, set.rir == nil, set.validity == .unknown else {

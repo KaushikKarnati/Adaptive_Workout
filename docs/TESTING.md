@@ -8,9 +8,11 @@ counterpart of each reference behavior. [Migration evidence](SWIFT_MIGRATION_STA
 records actual commands, results and limitations; a test listed here is not a
 claim that it passed.
 
-The owner asked to skip further physical-device checking at the migration
-checkpoint. Use local native checks for the current work and leave skipped
-installed-app checks explicitly unverified. The owner chose a fresh start with
+Physical-device checking was deferred at the migration checkpoint. On September
+28 the owner explicitly authorized installation and testing of the Stitch
+redesign on the connected iPhone. See SWIFT_MIGRATION_STATUS.md for the exact
+current device results; checks outside that recorded scope remain unverified.
+The owner chose a fresh start with
 the distinct native app identity; storage compatibility does not automatically
 transfer data from the deleted Flutter test app or another sandbox.
 

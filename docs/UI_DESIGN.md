@@ -1,18 +1,64 @@
 # Interface design
 
-The maintained interface is native SwiftUI on iOS 17 and later, with a restrained
-blue accent, semantic system surfaces, clear typography and generous spacing.
-It has two persistent main screens: **Workout** for logging, history and graphs,
-and **Settings** for appearance, haptics, the approved program, training setup and
-gym inventory. Details expand inline; saved workouts open in the existing logger.
-Small editing sheets and confirmation alerts stay local to these destinations.
-The labeled tab bar preserves context, following [Apple HIG: Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars).
+The maintained interface is native SwiftUI on iOS 17 and later. The September 28
+Stitch design uses amber accents, Space Grotesk, pale surfaces and white cards.
+Four persistent destinations provide **Workout**, **Plan**, **History** and
+**Profile**. Workout contains the dashboard, manual logger and committed summary;
+Profile retains appearance, haptics, program details, setup and gym inventory.
+The Stitch section below records reference-to-data differences and validation.
 
 `AdaptiveWorkoutApp` composes `HomeView`, `HistoryView`, `SettingsView`, `SetupView`
 and `SetEditor` under `native/AdaptiveWorkout/`. Practice remains hidden during
 normal use; Debug builds can expose it explicitly with `--practice`. Hiding it
 does not delete its separate records. New screens must use actual application
 state, with no invented activity, readiness, progress or recommendation metrics.
+
+## September 25 mockup scope
+
+The owner requested the proposals in sections 1 and 2 of **Adaptive Workout
+Mockups.pdf**, with the section-2 timer design adapted to native iOS. The following
+mapping describes the current interface, not a claim of feature acceptance or
+approval of the future recommendation engine.
+
+| Mockup | Native presentation and boundary |
+| --- | --- |
+| 1a | One numbered five-session chooser; selecting the active draft resumes it. Switching templates retains the existing early-finish confirmation. |
+| 1b–1c | Saved draft sets, completed-exercise summaries that reopen for correction, the next unrecorded set highlight, warm-up entry and a native set-entry sheet with exercise-valid load conventions. Rest starts explicitly. |
+| 1d–1e | Finished manual history and descriptive graphs retain search, date filters, exact-value disclosures, zero baselines and dashed session boundaries. |
+| 1f–1g | Inline appearance/haptic settings and a read-only program preview preserve prescription and setup-review boundaries. |
+| 1h–1i | Light and Dark use native semantic surfaces and system text roles rather than fixed mockup color values. |
+| 1j–1k | Cards, Table and Focus are selectable logging layouts. Focus shows one exercise, recorded-set progress, navigation and the next unrecorded-set action; All sets returns to Cards. |
+| 2a–2b | A next-in-plan manual workout card explains its ordering and unavailable engine capabilities; Time available saves an advisory duration or No time limit. |
+| 2c | Change exercise exposes the five exception choices. Persistent exclusions save an exact variation; ordinary replacement choices explain why automatic substitution remains unavailable. Pain opens the existing actual-set editor with Pain selected. |
+| 2d | My gym includes availability filters, status words/symbols, confirmed category count, checked dates and saved observation notes. |
+| 2e | Last trained has a persisted, off-by-default opt-in. Enabling it currently shows a review-unavailable screen: no production reviewed muscle-area mapping is wired in, so no area counts are displayed. |
+| 2f–2g | A separate floating rest/workout timer capsule uses native glass or material in both appearances above the system tab bar. Previous setups show labeled valid history; “same setup” appears only when the current record supplies an exact comparable context. |
+
+`AppModel` saves Cards/Table/Focus and the Last trained opt-in in local
+UserDefaults under `adaptiveWorkout.loggingLayout` and
+`adaptiveWorkout.lastTrainedEnabled`. These are presentation preferences, not
+workout evidence. The same section-2 timer capsule is used across logging layouts;
+Focus does not introduce a second timer or automatic rest transition.
+
+The next-in-plan shortcut is a pure manual-history projection: an existing draft
+wins, otherwise the latest finished or explicitly ended-early session advances
+through the approved plan order. It does not consult weekdays, infer recovery or
+invoke generated-workout orchestration. Completed-record navigation offers Next
+workout to return to the card. Day names remain original plan labels.
+
+The duration sheet offers 30/45/60/75 minutes, an existing custom duration and No
+time limit. It saves the advisory preference locally; it neither estimates a
+session duration nor drops exercises, changes rest or enforces a cutoff. Workout
+and Settings share one setup presentation model so duration/exclusion changes use
+the same repository-backed saved state while retaining unrelated form drafts.
+
+Equipment unavailable opens the gym checklist; Cannot perform and Replace for
+today do not manufacture substitutes. Do not recommend again saves an explicit
+variation exclusion without altering the manual prescription or past records.
+Pain remains a separate actual-entry route: only an accepted saved Pain record
+invokes the existing manual exercise-stop behavior. Opening/canceling the sheet
+is not a persisted safety event. This interface adds no clinical approval,
+symptom classification, escalation advice or return-to-training policy.
 
 ## Appearance
 
@@ -116,6 +162,13 @@ does not activate the standalone generated-workout backend.
 
 ## Session timers
 
+`WorkoutTimerCapsule` in `WorkoutComponents.swift` groups rest status, remaining
+time, total elapsed time and Clear rest. It uses the opaque Stitch card and amber
+progress track above the persistent navigation. At accessibility text sizes it
+uses a compact labeled countdown and clear button. Both variants use the same
+existing deadline; no timer state or training rules depend on this styling.
+
+
 Manual workouts show elapsed time from the saved start to the saved completion,
 including early completion. Breaks, background time and time away are included;
 this is elapsed time, not active exercise time. Reopening restores it from stored
@@ -179,3 +232,64 @@ source and detailed evidence remain in Git history and the existing ADRs. They
 are useful reference material, not proof that the native replacement passed the
 same checks. Database reopen tests are not physical power-loss tests, and one
 phone cannot establish coverage across every supported iOS version or device.
+
+## September 28 Stitch redesign
+
+The owner supplied four light screens in `stitch_adaptive_workout_ios_redesign`:
+Workout dashboard, active workout/rest/error state, descriptive history and workout
+completion. Their rendered PNGs and HTML colors take precedence over conflicting
+palette prose in the accompanying DESIGN.md. These files are visual references,
+not approval for new training rules, analytics or integration claims.
+
+`StitchDesign.swift` supplies the #F9F9FF canvas, white cards, #F3F3FA/#EDEDF5
+metric panels, #894D00 amber actions, peach badges, typography and completion
+components. Space Grotesk is bundled under its SIL Open Font License in Resources;
+font registration occurs at launch with no network request or package dependency.
+System/Light/Dark still use the saved appearance preference. Dark is an adaptation
+because no dark Stitch reference was supplied. Custom fonts retain Dynamic Type.
+
+The persistent navigation now has Workout, Plan, History and Profile. Workout
+starts at a dashboard and explicitly resumes its saved draft. Plan shows the
+approved prescriptions. History is a direct destination with Workouts, Recorded
+trends and Last trained. Profile retains appearance, haptics, program details,
+training setup and gym inventory. The workout and profile views remain mounted to
+preserve timer deadlines and unfinished settings fields across navigation.
+History source links select the record in Workout. Completion displays only after
+an acknowledged terminal action, with a separate route to correct saved sets.
+
+The active workout retains Cards/Table/Focus, warm-up entry, explicit rests,
+manual exceptions and the original write/retry locks. The rest dock uses an opaque
+rounded white card, large tabular countdown and amber progress track. It does not
+claim Live Activity integration, background synchronization or automatic pacing.
+Returning to the dashboard disarms foreground completion haptics while retaining
+the in-memory deadline. Reopening recomputes the countdown from its deadline.
+
+### Reference-to-data differences
+
+- Greeting, dates, plan names, exercises, counts and elapsed times use application
+  state. Alex, MetroFlex, sample workout names and sample kg loads are not seeded.
+  Facility context links to saved gym/setup controls instead of inventing a gym.
+- Working-slot record counts include explicit skips where labeled. Work-record
+  counts exclude warm-ups/skips. The approved plan's set counts are unchanged.
+- Time available is an advisory saved preference, not a generated duration estimate.
+- History uses the existing exact-context load/repetition series. No estimated
+  1RM, tonnage/PR delta, overload, muscle stimulus or recovery claim is introduced.
+- Completion shows elapsed time, records and per-exercise work/warm-up counts.
+  Active/rest time splitting, session RPE, session notes, sharing and automatic
+  routine adjustment have no approved contracts and are not presented as working
+  actions. Saved completion needs no second misleading "Save" action.
+- Errors appear only for actual failed/unacknowledged writes; no mock IO_ERR_09 or
+  "0 Data Loss" guarantee. Pain retains the explicit actual-set editor and existing
+  stop rule; the design's new symptom categories do not change safety policy.
+- iOS safe areas, native sheets and SF Symbols remain platform-native. The four
+  supplied light references guide visual hierarchy; pixel identity across devices,
+  Dynamic Type settings and different real data is not asserted.
+
+At accessibility text sizes the persistent navigation uses icon buttons with full
+accessibility labels, the header shortens its title, and the dock uses a compact
+labeled time plus a 48-point Clear rest button. Content typography continues to
+scale. This avoids consuming the entire workout viewport with fixed controls.
+
+Physical-device navigation refinement (2026-09-28): switching main tabs dismisses
+the keyboard while preserving unsaved setup fields. The device regression checks
+entry before/after navigation, saving, and persistence after relaunch.

@@ -56,3 +56,185 @@ These checks ran on the connected physical iPhone 17 Pro, before the final sourc
 Migration preserves the existing manual workflow and standalone adaptive backend. Real catalog activation, reviewed program bindings, complete safety/equipment inputs, the atomic cross-store capture/save adapter, target confirmation and live generated-session execution are still gated future work. Migration does not turn structural eligibility into a prescription.
 
 VoiceOver, 200% Larger Text, physical haptic feel, broader supported-OS/device coverage, power-loss durability and release-distribution signing are not newly certified. No real-data conversion or recovery is claimed. Optional device tests and their isolated fixture routing remain available for a later acceptance pass.
+
+## September 25: native mockup implementation
+
+The owner requested both sections of `Adaptive Workout Mockups.pdf`, selecting
+section 2's timer throughout and native iOS presentation. The app now includes the
+next-in-plan manual shortcut, one numbered chooser, Cards/Table/Focus logging,
+completed-card expansion, filtered native set-entry sheets, labeled previous
+setup history, grouped history with session-divided graphs, gym filters and
+checked dates, and advisory duration with an explicit No time limit option.
+Focus retains correction access to recorded working sets and warm-ups after
+completion. Native Liquid Glass (iOS 26+) or system material (iOS 17+) renders the
+separate rest/workout capsule above the native tab bar. No dependency was added.
+
+`HomeView` shares setup state across Workout and Settings; duration/exclusion
+writes preserve unrelated saved preferences and verification data. Retry retains
+its original action and reconciles only the affected draft fields. New
+presentation preferences remain in the fixture-scoped or production preference
+domain as appropriate. The original manual payload format, integer loads and
+microsecond timestamps, frozen prescriptions, revisions and separate stores
+remain intact. Existing untracked `ios/` files were not used or modified.
+
+The mockup's future-engine boundaries remain explicit. Change exercise exposes
+all five choices, but does not generate or silently apply replacements. Exact
+variation exclusions and gym observations can be saved. Pain opens actual-set
+entry with Pain preselected; an accepted Pain record invokes the existing manual
+stop behavior. Opening or canceling that sheet does not create a safety report.
+Last trained has a persisted, off-by-default opt-in and an unavailable state until
+reviewed muscle-area mappings exist. Its tested pure projection has no production
+mapping wired in. None of these screens activates catalog records, baseline
+verification, clinical wording approval or cross-store generated orchestration.
+
+Verification for this change:
+
+- Strict recursive Swift formatting lint passed for app, UI tests, all package
+  sources/tests and Package.swift.
+- `swift build --build-tests --package-path native/Packages/WorkoutCore` passed.
+- `swift test --package-path native/Packages/WorkoutCore` passed: 125 tests, zero
+  failures. New cases cover exact load-convention parity, paired/side ordering,
+  plan order, exact-context history, empty reviewed mappings, calendar days,
+  nil-duration preservation/validation, and distinct integer timestamps that
+  round to the same Foundation Date.
+- Generic unsigned iOS build passed using the repository's documented command.
+  Xcode emitted its App Intents metadata-extraction notice because this app does
+  not link AppIntents; no app-source compiler warnings were reported.
+- Simulator validation uses isolated `--fixture-directory` stores on iPhone 17
+  Pro / iOS 27. An initial attempt to build both simulator architectures could
+  not resolve the arm64 package module from the x86_64 app compile; explicitly
+  selecting `ONLY_ACTIVE_ARCH=YES` for the chosen arm64 simulator built cleanly.
+- The initial UI pass completed five of six tests successfully. Its large-text
+  test tapped the toggle's oversized label rather than the trailing switch;
+  the test was corrected to target the switch and assert its enabled state.
+  That attempt's Xcode process stalled after the test-suite summary and was
+  stopped; it is not recorded as a passing suite or a complete result bundle.
+
+Local verification logs: `/tmp/adaptive-mockup-package-build-final.log`,
+`/tmp/adaptive-mockup-package-test-final.log`, `/tmp/adaptive-mockup-build-final.log`
+and `/tmp/adaptive-mockup-lint.log`.
+
+The complete nine-case simulator run (`/tmp/adaptive-mockup-ui-3.xcresult`) passed
+all six mockup workflows and both existing workout workflows. The existing
+history navigation test failed its segmented-child hit-testing assertion despite
+successful taps and passing filter/metric assertions. Video confirmed the segment
+was visible. The corrected helper verifies the parent control is hittable and
+the enabled segment is on screen, then performs the same actual taps and state
+assertions. The targeted follow-up passed (one test, zero failures;
+`/tmp/adaptive-history-targeted.xcresult`). All nine distinct UI workflows have
+passing evidence across the complete run and this targeted follow-up; the earlier
+complete run itself remains recorded as failed. Earlier simulator failures
+also exposed ambiguous Skip button selection and a warm-up correction row behind
+the floating capsule; test helpers now select the editor button explicitly and
+scroll the correction row fully above the capsule before tapping.
+
+The final production layout separately passed the largest Dynamic Type timer test
+(`/tmp/adaptive-mockup-ui-large-final.xcresult`). Its assertions check the entire
+capsule's screen bounds, position above the native tab bar and reachable Clear
+control. Focus tiles scale to one column at the largest accessibility size.
+Light/dark and accessibility screenshots were inspected; source captures are in
+`/tmp/adaptive-mockup-ui-shots-3` and
+`/tmp/adaptive-mockup-ui-shots-large-final`. Simulator/Xcode diagnostics included
+system accessibility-loader duplication and debugger-version lookup messages;
+they were not app-source compiler warnings.
+
+No physical-phone install, real-data transfer, hands-on haptic evaluation,
+VoiceOver acceptance or older-iOS runtime acceptance is claimed.
+
+## September 28 — Stitch native presentation
+
+Implemented the supplied light design's dashboard, four-tab shell, active set
+cards/rest dock, history cards/trends and completion summary using native SwiftUI.
+Space Grotesk and its SIL license are bundled offline. Existing uncommitted
+September 25 presentation/domain work was retained; this change does not modify
+workout rules or persistence contracts. UI_DESIGN.md records the supplied mock
+content that cannot be represented as actual supported workout data.
+
+Validation in this run:
+
+- Strict native `swift-format lint`: passed.
+- `swift build --build-tests --package-path native/Packages/WorkoutCore`: passed.
+- `swift test --package-path native/Packages/WorkoutCore`: 125 tests, zero failures.
+- Generic iOS unsigned build and `xcodebuild analyze`: passed. Xcode reported its
+  expected App Intents metadata-skipped warning because this app has no AppIntents
+  dependency; no application diagnostic was emitted.
+- Simulator builds initially hit an Xcode mixed-architecture package module
+  incompatibility. Explicit `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES` resolved the build
+  for the already-installed iPhone 17 Pro / iOS 27 simulator
+  (`11CA8B0D-1BBC-41FC-A1D5-865B6A47455B`). No simulator runtime was downloaded.
+- Early visual checks found and corrected the variable font's PostScript name,
+  native glass header mismatch and nested bottom-inset overlap. An initial UI
+  assertion incorrectly expected an offscreen summary button; the test now checks
+  the visible summary transition. The UI suite was updated for the new tab names,
+  dashboard resume and explicit summary correction route.
+
+Physical-device checks, haptic comfort, VoiceOver acceptance, installed-data
+transfer, background/power-loss behavior and older-iOS runtime acceptance remain
+unverified. The light reference is adapted to real data and supported behavior;
+pixel identity and the reference's unimplemented PR/1RM/volume/recovery/Live
+Activity claims are not asserted.
+
+Final interaction verification: all 10 distinct UI scenarios passed across the
+full suite and targeted reruns. The full suite initially passed 8/10. The two
+failures were warm-up keyboard/scroll targeting and an oversized accessibility
+layout; both were corrected. The final targeted run passed all three selected
+cases (warm-up correction, accessibility XXXL timer and Stitch navigation/summary),
+zero failures. The new accessibility layout and explicit Focus-button targeting
+replaced the obsolete segmented-container hit test. A final screenshot review
+also corrected Focus's primary-button text contrast and added disabled styling.
+
+Final result bundle:
+`~/Library/Developer/Xcode/DerivedData/AdaptiveWorkout-bviggedzsinygqeykuasicktqlsp/Logs/Test/Test-AdaptiveWorkout-2026.09.28_15-39-20--0500.xcresult`.
+Local generated screenshot gallery: `build/stitch-review/index.html` (ignored
+build artifact). Captures inspected include dashboard, active/rest, recorded
+history, summary, dark appearance and accessibility XXXL rest controls. Final
+format lint, unsigned generic iOS build, static analysis and `git diff --check`
+passed. No physical-device acceptance is inferred.
+
+
+### Physical iPhone validation — 2026-09-28
+
+The owner explicitly authorized installation and physical-device testing,
+superseding the earlier device-test waiver. The signed native app was installed
+and launched on the connected iPhone 17 Pro running iOS 27.0 (24A437), using
+Xcode 27.0 (27A266a). Existing normal stores were not reset or uninstalled;
+automated tests used isolated fixture stores.
+
+- Signed `build-for-testing` and signature verification passed.
+- All 125 hosted core tests passed on the physical iPhone. The initial combined
+  run then timed out enabling UI automation; the separate UI retry initialized
+  successfully.
+- All 10 distinct UI scenarios passed across the full UI run and targeted
+  reruns. The first full UI run passed 8/10. Device testing exposed keyboard
+  interference when switching tabs; tab changes now resign the first responder
+  while retaining unsaved setup values. The strengthened settings test checks
+  the complete entered value before and after navigation, keyboard dismissal,
+  saving and persistence after restart. It passed in the targeted run, alongside
+  the saved-workout restart and Stitch dashboard/rest/summary flows.
+- The pain-cancellation test initially expected Simulator's placeholder in the
+  accessibility value. The device screenshot showed an empty field and iOS
+  reported nil. The test now verifies the placeholder, a hittable field and no
+  entered reps; it still verifies that canceling pain entry writes no record,
+  including after relaunch. Its final device rerun passed.
+- Physical captures of dashboard, active rest and completion summary were
+  visually inspected. Light/dark layout and accessibility XXXL timer scenarios
+  passed. Attachment names containing “light” do not necessarily indicate light
+  appearance when the device follows its dark system setting.
+- After the app change: strict Swift formatting, package build with tests,
+  125 package tests, unsigned generic iOS build, static analysis and diff
+  whitespace checks passed. Xcode's expected App Intents metadata-skipped
+  warning remains; no application diagnostic was emitted.
+
+Local evidence (ignored build artifacts):
+`build/device-validation/physical-tests.xcresult` (125 hosted tests and initial
+UI-automation startup timeout), `physical-ui-retry.xcresult` (full UI run),
+`physical-focused.xcresult` (three successful navigation/persistence scenarios;
+old pain assertion failed), and `physical-pain-final.xcresult` (final pain test
+passed), all under `build/device-validation/`. Final physical screenshots are
+in `build/device-validation/final-screenshots/`.
+
+The app was relaunched without fixture arguments after testing. Haptic comfort,
+manual VoiceOver acceptance, real-data transfer, power-loss behavior and older
+OS runtime acceptance remain unverified. These device results do not establish
+pixel identity with unsupported Stitch sample metrics or activate gated
+recommendations.

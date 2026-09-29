@@ -4,6 +4,7 @@ import WorkoutPersistence
 
 struct SettingsView: View {
   let directory: URL
+  @ObservedObject var setupModel: SetupModel
   @Binding var appearance: String
   @Binding var hapticsEnabled: Bool
   var cue: (AppModel.Cue) -> Void = { _ in }
@@ -11,13 +12,22 @@ struct SettingsView: View {
     NavigationView {
       Form {
         Section {
+          Text("Make it yours.").font(.title2.bold())
+          Text("Your preferences and training, in one place.").foregroundStyle(.secondary)
+        }
+        Section {
           DisclosureGroup("Appearance and feedback") {
             Picker("Appearance", selection: $appearance) {
               Text("System").tag("system")
               Text("Light").tag("light")
               Text("Dark").tag("dark")
             }.accessibilityIdentifier("appearance_picker")
+            Text(
+              "System follows your device’s Light or Dark appearance. Your choice is saved on this device."
+            ).font(.caption).foregroundStyle(.secondary)
             Toggle("Haptic feedback", isOn: $hapticsEnabled)
+            Text("Subtle feedback for selections and important actions.").font(.caption)
+              .foregroundStyle(.secondary)
           }
         }
         Section {
@@ -32,8 +42,10 @@ struct SettingsView: View {
                     if block.exercises.count == 2 {
                       Text("Superset · 3 paired rounds").font(.caption.bold())
                     }
-                    ForEach(block.exercises, id: \.id) { exercise in
-                      Text(exercise.name).font(.subheadline.bold())
+                    ForEach(Array(block.exercises.enumerated()), id: \.element.id) {
+                      index, exercise in
+                      Text((block.isSuperset ? "A\(index + 1) · " : "") + exercise.name).font(
+                        .subheadline.bold())
                       Text(
                         "\(exercise.sets) sets · \(exercise.minReps)–\(exercise.maxReps) reps\(exercise.eachSide ? " each side" : "") · 2–3 RIR"
                       ).font(.caption)
@@ -68,7 +80,7 @@ struct SettingsView: View {
               .font(.caption).foregroundColor(.secondary)
           }
         }
-        Section { DisclosureGroup("Training setup") { SetupView(directory: directory, cue: cue) } }
+        Section { DisclosureGroup("Training setup") { SetupView(model: setupModel, cue: cue) } }
         Section { DisclosureGroup("My gym") { GymSettingsView(directory: directory, cue: cue) } }
         #if DEBUG
           if ProcessInfo.processInfo.arguments.contains("--practice") {
@@ -83,7 +95,9 @@ struct SettingsView: View {
           ).font(.caption).foregroundColor(.secondary)
         }
       }
-      .navigationTitle("Settings")
+      .scrollContentBackground(.hidden)
+      .background(Stitch.canvas)
+      .navigationTitle("Profile").navigationBarTitleDisplayMode(.inline)
     }
     .navigationViewStyle(.stack)
   }
@@ -168,9 +182,10 @@ private struct GymEquipmentEdit: Identifiable {
   var id: String
   var observation: GymEquipment?
 }
-private struct GymSettingsView: View {
+struct GymSettingsView: View {
   @StateObject private var model: GymSettingsModel
   let cue: (AppModel.Cue) -> Void
+  @State private var filter = "all"
   @State private var adding = false
   @State private var editing: GymEquipmentEdit?
   @State private var name = ""
@@ -218,15 +233,44 @@ private struct GymSettingsView: View {
           Text("General equipment checklist").font(.headline)
           Text("Mark only equipment you have checked at this location.").font(.caption)
             .foregroundColor(.secondary)
-          ForEach(SetupTaxonomy.equipmentIds.sorted(), id: \.self) { category in
+          Text(
+            "\(gym.equipment.filter { $0.availability == .available }.count) categories confirmed available"
+          ).font(.subheadline)
+          Picker("Equipment filter", selection: $filter) {
+            Text("All").tag("all")
+            Text("Available").tag("available")
+            Text("Not checked").tag("unknown")
+            Text("Unavailable").tag("unavailable")
+          }.pickerStyle(.menu).onChange(of: filter) { cue(.selection) }
+          ForEach(
+            SetupTaxonomy.equipmentIds.sorted().filter { category in
+              filter == "all"
+                || (gym.equipment.first { $0.category == category }?.availability.rawValue
+                  ?? "unknown") == filter
+            }, id: \.self
+          ) { category in
             let observation = gym.equipment.first { $0.category == category }
             Button {
               editing = GymEquipmentEdit(id: category, observation: observation)
             } label: {
               VStack(alignment: .leading) {
                 Text(category.replacingOccurrences(of: "_", with: " ").capitalized)
-                Text(observation?.availability.rawValue.capitalized ?? "Not checked").font(.caption)
-                  .foregroundColor(.secondary)
+                Label(
+                  observation?.availability == .unknown || observation == nil
+                    ? "Not checked" : observation!.availability.rawValue.capitalized,
+                  systemImage: observation?.availability == .available
+                    ? "checkmark.circle.fill"
+                    : observation?.availability == .unavailable ? "nosign" : "questionmark.circle"
+                ).font(.caption)
+                if let checked = observation?.checkedAt {
+                  Text("Checked \(checked.formatted(date: .abbreviated, time: .omitted))").font(
+                    .caption
+                  ).foregroundStyle(.secondary)
+                }
+                Text(observation?.availability == .unknown ? "Availability unconfirmed" : "").font(
+                  .caption
+                )
+                .foregroundColor(.secondary)
                 if let observation, !observation.notes.isEmpty {
                   Text(observation.notes).font(.caption).foregroundColor(.secondary)
                 }

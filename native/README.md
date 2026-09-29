@@ -12,4 +12,4 @@ Domain rules live in `WorkoutDomain`, coordinated actions in `WorkoutApplication
 
 Debug screen tests use unique fixture directories and preference domains. Hosted unit tests also isolate app startup. `--fixture-directory NAME` and `--reset-fixture` never reset normal app storage. Release builds reject developer fixture/practice arguments. Practice is available only through explicit Debug `--practice` injection and remains separate from progression evidence.
 
-See [testing](../docs/TESTING.md), [migration evidence](../docs/SWIFT_MIGRATION_STATUS.md), and the [behavior map](../docs/SWIFT_PARITY_MATRIX.md). Final physical-device checks were waived by the owner; local build/test evidence is reported separately.
+See [testing](../docs/TESTING.md), [migration evidence](../docs/SWIFT_MIGRATION_STATUS.md), and the [behavior map](../docs/SWIFT_PARITY_MATRIX.md). Physical-device checks were initially deferred; the owner authorized a device installation and test pass on September 28. Current results and remaining limits are recorded in the migration evidence.

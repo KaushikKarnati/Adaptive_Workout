@@ -1,4 +1,5 @@
 import SwiftUI
+import WorkoutApplication
 import WorkoutDomain
 
 struct HistoryView: View {
@@ -16,10 +17,18 @@ struct HistoryView: View {
       logs, profile: profile, query: query,
       since: days == 0 ? nil : Date().addingTimeInterval(-Double(days) * 86_400))
   }
+  private var groupedHistory: [(date: Date, logs: [ProgramLog])] {
+    Dictionary(grouping: filtered) { Calendar.current.startOfDay(for: $0.startedAt) }
+      .map { (date: $0.key, logs: $0.value) }
+      .sorted { $0.date > $1.date }
+  }
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      TextField("Search workouts, exercises or setups", text: $query).textFieldStyle(.roundedBorder)
-        .accessibilityIdentifier("history_search")
+      HStack {
+        Image(systemName: "magnifyingglass").foregroundStyle(Stitch.secondary)
+        TextField("Search exercises, setups, workouts…", text: $query)
+          .accessibilityIdentifier("history_search")
+      }.padding(12).background(Stitch.card, in: RoundedRectangle(cornerRadius: 12))
       Picker("Date range", selection: $days) {
         Text("All time").tag(0)
         Text("30 days").tag(30)
@@ -41,7 +50,8 @@ struct HistoryView: View {
         }
         ForEach(series) { item in
           VStack(alignment: .leading, spacing: 10) {
-            Text(item.name).font(.headline)
+            StitchLabel(text: "Recorded working sets")
+            Text(item.name).font(Stitch.font(22, .semibold))
             Text(
               "\(item.key.variant.replacingOccurrences(of: "_", with: " ")) · \(item.key.setup) · \(item.key.side.rawValue)"
             ).font(.subheadline).foregroundColor(.secondary)
@@ -71,8 +81,12 @@ struct HistoryView: View {
             }
             Text(
               "Latest: \(values.last.map { String(format: useLoad ? "%.2f" : "%.0f", $0) } ?? "—") \(useLoad ? "lb" : "reps")"
-            ).accessibilityIdentifier("graph_latest_" + item.key.slot)
-            HistoryLine(values: values).frame(height: 150).accessibilityHidden(true)
+            ).font(Stitch.font(28, .semibold)).monospacedDigit().accessibilityIdentifier(
+              "graph_latest_" + item.key.slot)
+            HistoryLine(values: values, sessionIDs: item.points.map { $0.log.id })
+              .frame(height: 150).padding(8).background(
+                Stitch.inset, in: RoundedRectangle(cornerRadius: 10)
+              ).accessibilityHidden(true)
             HStack {
               Text(item.points.first!.log.startedAt.formatted(date: .abbreviated, time: .omitted))
               Spacer()
@@ -82,7 +96,7 @@ struct HistoryView: View {
               Text("One recorded set. More records will build the graph.").font(.caption)
             }
             Text(
-              "\(useLoad ? (item.key.convention == .assistance ? "Support (lb)" : "Load (lb)") : "Repetitions") · horizontal axis: recorded set order"
+              "\(useLoad ? (item.key.convention == .assistance ? "Support (lb)" : "Load (lb)") : "Repetitions") · horizontal axis: recorded set order. Dashed dividers separate workouts."
             ).font(.caption)
             DisclosureGroup("Exact values (\(item.points.count) sets)") {
               ForEach(item.points.reversed()) { point in
@@ -96,25 +110,44 @@ struct HistoryView: View {
                 }
               }
             }
-          }.padding().background(Color(.secondarySystemGroupedBackground)).cornerRadius(16)
+          }.modifier(StitchCard())
         }
       } else {
-        ForEach(filtered, id: \.id) { log in
-          VStack(alignment: .leading, spacing: 8) {
-            Text(log.startedAt.formatted(date: .abbreviated, time: .omitted)).font(.caption)
-              .foregroundColor(.secondary)
-            Button {
-              open(log)
-            } label: {
-              VStack(alignment: .leading, spacing: 5) {
-                Text("\(log.plan.day) · \(log.plan.title)").font(.headline)
-                Text(
-                  "\(log.sets.filter { !$0.warmup && !$0.skipped }.count) working-set records · \(log.endedEarly ? "Finished early" : log.hasSkips ? "Finished with skips" : "Finished")"
-                ).font(.subheadline).foregroundColor(.secondary)
-              }.frame(maxWidth: .infinity, alignment: .leading)
-            }.accessibilityIdentifier("history_workout_" + log.id)
-            Button("Delete", role: .destructive) { delete(log) }
-          }.padding().background(Color(.secondarySystemGroupedBackground)).cornerRadius(16)
+        Text("Recent Sessions").font(Stitch.font(22, .semibold))
+        ForEach(groupedHistory, id: \.date) { group in
+          VStack(alignment: .leading, spacing: 10) {
+            Text(group.date.formatted(date: .complete, time: .omitted))
+              .font(Stitch.font(11, .medium)).foregroundStyle(Stitch.secondary)
+              .accessibilityAddTraits(.isHeader)
+            ForEach(group.logs, id: \.id) { log in
+              VStack(alignment: .leading, spacing: 8) {
+                Button {
+                  open(log)
+                } label: {
+                  VStack(alignment: .leading, spacing: 8) {
+                    Text("\(log.plan.day) · \(log.plan.title)").font(Stitch.font(20, .semibold))
+                      .foregroundStyle(.primary)
+                    Text(log.startedAt.formatted(date: .omitted, time: .shortened))
+                      .font(.subheadline).foregroundStyle(.secondary)
+                    Label(
+                      log.endedEarly
+                        ? "Finished early" : log.hasSkips ? "Finished with skips" : "Finished",
+                      systemImage: log.endedEarly || log.hasSkips
+                        ? "checkmark.circle" : "checkmark.circle.fill"
+                    ).font(Stitch.font(11, .semibold)).foregroundStyle(
+                      log.endedEarly ? Stitch.amber : Stitch.green)
+                    StitchSessionMetrics(log: log)
+                    Text(log.exercises.prefix(2).map(\.name).joined(separator: " • "))
+                      .font(Stitch.font(11)).foregroundStyle(Stitch.secondary)
+
+                  }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("history_workout_" + log.id)
+                Button("Delete", role: .destructive) { delete(log) }
+                  .frame(minHeight: 44).buttonStyle(.borderless)
+              }.modifier(StitchCard())
+            }
+          }
         }
       }
     }
@@ -122,6 +155,7 @@ struct HistoryView: View {
 }
 private struct HistoryLine: View {
   let values: [Double]
+  let sessionIDs: [String]
   var body: some View {
     Canvas { context, size in
       guard !values.isEmpty else { return }
@@ -146,6 +180,16 @@ private struct HistoryLine: View {
           x: left
             + (values.count == 1 ? width / 2 : width * Double(index) / Double(values.count - 1)),
           y: 8 + height * (1 - value / top))
+      }
+      for index in points.indices.dropFirst()
+      where sessionIDs[index] != sessionIDs[index - 1] {
+        let x = (points[index - 1].x + points[index].x) / 2
+        var boundary = Path()
+        boundary.move(to: CGPoint(x: x, y: 8))
+        boundary.addLine(to: CGPoint(x: x, y: 8 + height))
+        context.stroke(
+          boundary, with: .color(.secondary.opacity(0.6)),
+          style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
       }
       var path = Path()
       path.addLines(points)
