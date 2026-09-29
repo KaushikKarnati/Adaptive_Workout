@@ -226,7 +226,7 @@ final class EngineComposerTests: XCTestCase {
     XCTAssertNil(source.saved)
   }
 }
-private final class EngineFakeGenerationSource: SessionGenerationSource {
+private final class EngineFakeGenerationSource: SessionGenerationSource, @unchecked Sendable {
   let fixture: EngineComposerFixture
   var revision = 0, changeDuringCapture = false, failSave = false
   var receipts: [String: String] = [:], saved: String?

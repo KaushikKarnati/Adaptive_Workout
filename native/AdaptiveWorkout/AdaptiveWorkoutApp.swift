@@ -31,6 +31,7 @@ struct AdaptiveWorkoutApp: App {
 @MainActor
 final class AppModel: ObservableObject {
   @Published var controller: ProgramLogController?
+  @Published var adaptiveController: AdaptiveGenerationController?
   @Published var error: String?
   @Published private(set) var appearance = "system"
   @Published private(set) var hapticsEnabled = true
@@ -73,6 +74,38 @@ final class AppModel: ObservableObject {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       let stores = try LocalAppStores(directory: directory)
       controller = ProgramLogController(repository: stores.programLogs)
+
+      let composer = SessionComposer(
+        evaluator: ExerciseEligibilityEvaluator(
+          catalogValidator: ExerciseCatalogManifestValidator(
+            importedAt: OwnerProgramCatalogSlice.retrievedAt)),
+        bindings: OwnerProgramCatalogSlice.bindings
+      )
+      let generationSource = CoordinatedSessionGenerationSource(
+        profile: "local_owner",
+        setupRepository: stores.trainingSetup,
+        historyRepository: stores.recommendationHistory,
+        catalog: OwnerProgramCatalogSlice.entries,
+        catalogDigest: OwnerProgramCatalogSlice.contentSha256,
+        candidateExerciseIds: Array(OwnerProgramCatalogSlice.bindings.exerciseIds.values),
+        manifest: OwnerProgramCatalogSlice.manifest
+      )
+      let generationService = SessionGenerationService(source: generationSource, composer: composer)
+      let savedWorkoutService = SavedWorkoutService(stores.recommendationHistory)
+
+      let calibrationService = BaselineCalibrationService(
+        programLogsRepository: stores.programLogs,
+        setupRepository: stores.trainingSetup,
+        profileId: "local_owner"
+      )
+      adaptiveController = AdaptiveGenerationController(
+        generationService: generationService,
+        savedService: savedWorkoutService,
+        historyRepository: stores.recommendationHistory,
+        setupRepository: stores.trainingSetup,
+        calibrationService: calibrationService,
+        profile: "local_owner"
+      )
       hapticsEnabled = preferences.object(forKey: "adaptiveWorkout.hapticsEnabled") as? Bool ?? true
       let layout = preferences.string(forKey: "adaptiveWorkout.loggingLayout") ?? "cards"
       loggingLayout = ["cards", "table", "focus"].contains(layout) ? layout : "cards"

@@ -1,7 +1,7 @@
 import Foundation
 import WorkoutDomain
 
-public final class SqliteGymProfileRepository: GymProfileRepository {
+public final class SqliteGymProfileRepository: GymProfileRepository, @unchecked Sendable {
   private let db: SQLiteDatabase
   public init(path: String) throws {
     db = try SQLiteDatabase(path: path)

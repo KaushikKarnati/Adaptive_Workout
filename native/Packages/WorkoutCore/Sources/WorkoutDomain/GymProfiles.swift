@@ -111,7 +111,7 @@ public struct GymProfiles: Equatable, Sendable {
       profiles: SetupJSON.array(j, "profiles") { try GymProfile.fromJSON(SetupJSON.dict($0)) })
   }
 }
-public protocol GymProfileRepository {
+public protocol GymProfileRepository: Sendable {
   func load() throws -> GymProfiles
   func save(_ next: GymProfiles, expected: GymProfiles) throws
 }

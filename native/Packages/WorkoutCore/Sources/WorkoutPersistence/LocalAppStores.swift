@@ -8,11 +8,20 @@ public struct LocalAppStores: Sendable {
   }
   public let programLogs: SqliteProgramLogRepository
   public let appearance: Result<LoadedAppearance, Error>
+  public let trainingSetup: SqliteTrainingSetupRepository
+  public let recommendationHistory: SqliteRecommendationHistoryRepository
+  public let gymProfiles: SqliteGymProfileRepository
 
   public init(directory: URL) throws {
     programLogs = try SqliteProgramLogRepository(
       path: directory.appendingPathComponent("program_logging.sqlite").path)
     appearance = Self.loadAppearance(directory: directory)
+    trainingSetup = try SqliteTrainingSetupRepository(
+      path: directory.appendingPathComponent("training_setup.sqlite").path)
+    recommendationHistory = try SqliteRecommendationHistoryRepository(
+      path: directory.appendingPathComponent("recommendations.sqlite").path)
+    gymProfiles = try SqliteGymProfileRepository(
+      path: directory.appendingPathComponent("gym_profiles.sqlite").path)
   }
 
   public static func loadAppearance(directory: URL) -> Result<LoadedAppearance, Error> {

@@ -4,7 +4,7 @@ import WorkoutPersistence
 import XCTest
 
 @MainActor final class SettingsControllerTests: XCTestCase {
-  private final class Repository: TrainingSetupRepository {
+  private final class Repository: TrainingSetupRepository, @unchecked Sendable {
     var stored: TrainingSetup?
     var failAcknowledgement = false
     var actionIds: [String] = []

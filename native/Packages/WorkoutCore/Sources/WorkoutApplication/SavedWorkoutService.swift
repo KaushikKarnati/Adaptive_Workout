@@ -36,6 +36,24 @@ public struct SavedWorkoutService: Sendable {
     else { throw SavedWorkoutError.missingOccurrence }
     return SavedWorkout(occurrence: matches[0], prescription: prescription)
   }
+  public func prepareStart(
+    profile: String, recommendationId: String, occurrenceId: String, at: Date, actionId: String
+  ) throws -> SavedWorkoutAction {
+    let history = try repository.load(profile)
+    guard history.occurrences.filter({ $0.status == .active }).isEmpty else {
+      throw SavedWorkoutError.invalidActiveHistory
+    }
+    guard history.recommendations.contains(where: { $0.id == recommendationId }) else {
+      throw SavedWorkoutError.missingOccurrence
+    }
+    let sequence = history.occurrences.count
+    let occurrence = try GeneratedOccurrence(
+      id: occurrenceId, profile: profile, recommendationId: recommendationId, sequence: sequence,
+      revision: 0, startedAt: at, updatedAt: at, endedAt: nil, status: .active, sets: [],
+      stoppedSlots: [])
+    return SavedWorkoutAction(
+      occurrence: occurrence, historyRevision: history.revision, actionId: actionId)
+  }
   public func prepareSet(
     profile: String, occurrenceId: String, set: ProgramSet, at: Date, actionId: String
   ) throws -> SavedWorkoutAction {

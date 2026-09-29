@@ -310,7 +310,7 @@ public struct TrainingSetup: Equatable, Sendable {
   }
 
 }
-public protocol TrainingSetupRepository {
+public protocol TrainingSetupRepository: Sendable {
   func load(_ profileId: String) throws -> TrainingSetup?
   func save(_ setup: TrainingSetup, expectedRevision: Int, actionId: String) throws
 }

@@ -82,7 +82,10 @@ struct HomeView: View {
       if tab == 2 { mode = 1 }
       model.cue(.selection)
     }
-    .task { await controller.load() }
+    .task {
+      await controller.load()
+      await model.adaptiveController?.load()
+    }
     .alert(
       "Appearance unavailable",
       isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })
@@ -154,6 +157,7 @@ struct WorkoutView: View {
   @State private var rest = RestCountdown()
   @State private var completionArmed = false
   @State private var now = Date()
+  @State private var engineMode = 0
   private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
   var body: some View {
     NavigationView {
@@ -176,9 +180,53 @@ struct WorkoutView: View {
           }
           if controller.busy { ProgressView().accessibilityLabel("Saving") }
           if mode == 0 {
-            if choosing {
+            if (hub || engineMode == 1) && controller.selected == nil && !choosing {
+              Picker("Workout Engine", selection: $engineMode) {
+                Text("Manual Plan").tag(0)
+                Text("Adaptive Engine").tag(1)
+              }
+              .pickerStyle(.segmented)
+              .accessibilityIdentifier("workout_engine_picker")
+              .onChange(of: engineMode) {
+                model.cue(.selection)
+                if engineMode == 1 {
+                  Task { await model.adaptiveController?.load() }
+                }
+              }
+            }
+            if engineMode == 1 {
+              if let adaptive = model.adaptiveController {
+                AdaptiveWorkoutView(
+                  adaptiveController: adaptive,
+                  model: model,
+                  setup: setup,
+                  profile: profile,
+                  switchToManual: { engineMode = 0 }
+                )
+              } else {
+                Text("Adaptive engine unavailable.")
+              }
+            } else if choosing {
               sessionSelection
             } else if hub {
+              if let active = model.adaptiveController?.activeWorkout {
+                HStack {
+                  Circle().fill(Stitch.green).frame(width: 8, height: 8)
+                  StitchLabel(text: "Active adaptive workout")
+                  Spacer(minLength: 0)
+                  Button("Resume Adaptive →") { engineMode = 1 }
+                    .font(Stitch.font(13, .semibold))
+                    .padding(.horizontal, 12).frame(minHeight: 44)
+                    .background(Stitch.peach, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityIdentifier("resume_adaptive_banner")
+                }
+                .modifier(StitchCard(padding: 10))
+              } else if let adaptive = model.adaptiveController,
+                adaptive.latestRecommendation == nil
+                  || adaptive.latestRecommendation?.status != .ready
+              {
+                calibrationMiniBanner(adaptive.calibrationProgress)
+              }
               dashboard
             } else if let log = controller.selected, log.completed, !reviewCompleted {
               StitchSummary(
@@ -223,43 +271,53 @@ struct WorkoutView: View {
         }.padding().frame(maxWidth: 720)
       }
       .id(
-        "\(mode)-\(hub)-\(choosing)-\(controller.selected?.completed ?? false)-\(reviewCompleted)"
+        "\(mode)-\(engineMode)-\(hub)-\(choosing)-\(controller.selected?.completed ?? false)-\(reviewCompleted)"
       )
       .background(Stitch.canvas)
       .toolbar(.hidden, for: .navigationBar)
       .safeAreaInset(edge: .top, spacing: 0) {
         HStack(spacing: 12) {
-          if !hub && mode == 0 && !choosing {
+          if (!hub && mode == 0 && !choosing) || (engineMode == 1 && mode == 0) {
             Button {
-              hub = true
+              if engineMode == 1 {
+                engineMode = 0
+              } else {
+                hub = true
+              }
             } label: {
               Image(systemName: "chevron.left").font(.system(size: 22))
             }
-            .frame(width: 32, height: 44).accessibilityLabel("Back to dashboard")
+            .frame(width: 32, height: 44)
+            .accessibilityLabel(engineMode == 1 ? "Back to manual plan" : "Back to dashboard")
           }
           Text(
             typeSize.isAccessibilitySize
-              ? (mode == 1 ? "History" : "Workout")
+              ? (mode == 1 ? "History" : engineMode == 1 ? "Adaptive" : "Workout")
               : mode == 1
                 ? "History"
                 : choosing
                   ? "Choose workout"
-                  : hub
-                    ? "Workout"
-                    : controller.selected?.completed == true && !reviewCompleted
-                      ? "Workout Summary" : "Active Workout"
+                  : engineMode == 1
+                    ? (model.adaptiveController?.activeWorkout != nil
+                      ? "Active Adaptive Workout" : "Adaptive Engine")
+                    : hub
+                      ? "Workout"
+                      : controller.selected?.completed == true && !reviewCompleted
+                        ? "Workout Summary" : "Active Workout"
           )
           .font(Stitch.font(typeSize.isAccessibilitySize ? 14 : 18, .semibold))
           Spacer(minLength: 0)
-          Button {
-            choosing.toggle()
-            mode = 0
-          } label: {
-            Image(systemName: choosing ? "checkmark" : "slider.horizontal.3").font(
-              .system(size: 20)
-            ).frame(
-              width: 44, height: 44)
-          }.accessibilityLabel(choosing ? "Done" : "Choose workout").disabled(controller.locked)
+          if engineMode == 0 {
+            Button {
+              choosing.toggle()
+              mode = 0
+            } label: {
+              Image(systemName: choosing ? "checkmark" : "slider.horizontal.3").font(
+                .system(size: 20)
+              ).frame(
+                width: 44, height: 44)
+            }.accessibilityLabel(choosing ? "Done" : "Choose workout").disabled(controller.locked)
+          }
           Button(action: profile) {
             Image(systemName: "person.crop.circle").font(.system(size: 20))
               .foregroundStyle(.white).frame(width: 34, height: 34)
@@ -366,6 +424,7 @@ struct WorkoutView: View {
           reviewCompleted = false
           rest.clear()
           completionArmed = false
+          Task { await model.adaptiveController?.load() }
         }
       }
       .onChange(of: hub) { arm() }
@@ -374,7 +433,13 @@ struct WorkoutView: View {
       .onChange(of: mode) {
         model.cue(.selection)
         arm()
-        if mode != 0 { Task { await controller.load() } }
+        Task {
+          await controller.load()
+          await model.adaptiveController?.load()
+        }
+      }
+      .onChange(of: model.adaptiveController?.activeWorkout != nil) { _, hasActive in
+        if hasActive { engineMode = 1 }
       }
       .onReceive(tick) { value in
         guard visible, mode == 0, !hub, scenePhase == .active else { return }
@@ -484,6 +549,61 @@ struct WorkoutView: View {
     }
   }
   private var nextWorkout: some View { dashboard }
+  private func calibrationMiniBanner(_ progress: CalibrationProgress) -> some View {
+    Button {
+      engineMode = 1
+    } label: {
+      HStack(spacing: 12) {
+        ZStack {
+          Circle()
+            .stroke(Stitch.elevated, lineWidth: 3.5)
+            .frame(width: 38, height: 38)
+          Circle()
+            .trim(from: 0, to: CGFloat(progress.fraction))
+            .stroke(
+              progress.isUnlocked ? Stitch.green : Stitch.amber,
+              style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+            )
+            .rotationEffect(.degrees(-90))
+            .frame(width: 38, height: 38)
+          if progress.isUnlocked {
+            Image(systemName: "checkmark")
+              .font(.system(size: 13, weight: .bold))
+              .foregroundStyle(Stitch.green)
+          } else {
+            Text("\(progress.loggedCount)/\(progress.requiredCount)")
+              .font(Stitch.font(10, .semibold))
+              .foregroundStyle(Stitch.ink)
+          }
+        }
+        VStack(alignment: .leading, spacing: 3) {
+          HStack {
+            Text(progress.isUnlocked ? "TRIAL COMPLETE" : "ADAPTIVE ENGINE CALIBRATION")
+              .font(Stitch.font(10, .semibold)).tracking(0.6)
+              .foregroundStyle(progress.isUnlocked ? Stitch.green : Stitch.amber)
+            Spacer()
+            Image(systemName: "chevron.right")
+              .font(Stitch.font(11))
+              .foregroundStyle(Stitch.secondary)
+          }
+          Text(
+            progress.isUnlocked
+              ? "All 7 trial workouts logged. Tap to activate engine."
+              : "\(progress.remainingCount) more \(progress.remainingCount == 1 ? "log" : "logs") needed to unlock Adaptive Engine"
+          )
+          .font(Stitch.font(12, .medium))
+          .foregroundStyle(Stitch.ink)
+        }
+      }
+      .padding(12)
+      .background(Stitch.card, in: RoundedRectangle(cornerRadius: 12))
+      .overlay(
+        RoundedRectangle(cornerRadius: 12).stroke(Stitch.elevated.opacity(0.45), lineWidth: 0.5)
+      )
+    }
+    .buttonStyle(.plain)
+    .accessibilityIdentifier("calibration_progress_banner")
+  }
   private var dashboard: some View {
     StitchDashboard(
       logs: controller.logs, profile: controller.profile, draft: controller.draft,

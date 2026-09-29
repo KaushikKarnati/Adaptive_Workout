@@ -195,7 +195,7 @@ final class WorkoutPresentationTests: XCTestCase {
 }
 
 @MainActor final class PresentationSetupControllerTests: XCTestCase {
-  private final class Repository: TrainingSetupRepository {
+  private final class Repository: TrainingSetupRepository, @unchecked Sendable {
     var stored: TrainingSetup?
     func load(_ profileId: String) throws -> TrainingSetup? { stored }
     func save(_ setup: TrainingSetup, expectedRevision: Int, actionId: String) throws {

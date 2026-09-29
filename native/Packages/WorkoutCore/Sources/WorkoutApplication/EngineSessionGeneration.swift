@@ -3,7 +3,7 @@ import WorkoutDomain
 /// Implementations must capture and compare-and-save under the same consistency
 /// boundary, including every revision and the action receipt. Independent reads
 /// of the existing separate stores do not satisfy this contract.
-public protocol SessionGenerationSource {
+public protocol SessionGenerationSource: Sendable {
   func capture(_ requestId: String) throws -> CapturedSessionInputs
   func saveIfCurrent(
     captured: CapturedSessionInputs, result: SessionCompositionResult, actionId: String) throws
@@ -17,7 +17,7 @@ public struct CapturedSessionInputs: Sendable {
   }
 }
 /// No production source is registered until an atomic cross-store capture exists.
-public struct SessionGenerationService {
+public struct SessionGenerationService: Sendable {
   public let source: any SessionGenerationSource
   public let composer: SessionComposer
   public init(source: any SessionGenerationSource, composer: SessionComposer) {
