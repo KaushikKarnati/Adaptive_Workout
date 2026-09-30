@@ -507,6 +507,9 @@ VoiceOver acceptance and real-data transfer remain unverified.
 - `swift test --package-path native/Packages/WorkoutCore`: 146 tests passed.
 - Generic iOS `xcodebuild` build with signing disabled: BUILD SUCCEEDED.
 - Generic iOS `xcodebuild` analyze with signing disabled: ANALYZE SUCCEEDED.
+- Build warning: App Intents metadata extraction was skipped because the app
+  has no AppIntents.framework dependency. This build adds no App Intents feature;
+  the tool emits this warning for the optional metadata stage.
 - Existing pinned-reference importer tests: three passed.
 - Physical iPhone UI test attempt compiled but could not install/launch the test
   runner because the free development profile's three-app limit was reached.
