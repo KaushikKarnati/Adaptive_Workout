@@ -133,7 +133,16 @@ struct SetEditor: View {
       .scrollContentBackground(.hidden)
       .background(Stitch.canvas)
       .navigationTitle(skipOnly ? "Skip set" : "Record set").navigationBarTitleDisplayMode(.inline)
-      .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+        ToolbarItemGroup(placement: .keyboard) {
+          Spacer()
+          Button("Done") {
+            UIApplication.shared.sendAction(
+              #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+          }.accessibilityIdentifier("dismiss_set_keyboard")
+        }
+      }
       .onAppear {
         guard !initialized else { return }
         initialized = true

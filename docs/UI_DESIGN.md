@@ -365,3 +365,13 @@ variation, measurement, load and reps without saving or copying RIR/validity.
 Profile includes offline exercise references and opt-in notifications. Clearing
 rest or changing workouts cancels the scheduled rest alert. Generation remains
 unavailable while authoritative review and atomic storage requirements are unmet.
+
+
+### Simulator regression fixes — September 30
+
+A completed workout retains the Workout Summary heading and resets its scroll
+position using the committed snapshot even after controller deselection. Review /
+correct saved sets stays in the logger when the completed record is reselected.
+The manual set editor includes Done above the keyboard to dismiss it before
+saving or reviewing validation errors. These presentation fixes do not alter
+prescriptions, stored records or recommendation gates.

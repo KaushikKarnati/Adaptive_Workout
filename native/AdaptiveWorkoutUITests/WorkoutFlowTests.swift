@@ -95,6 +95,10 @@ final class WorkoutFlowTests: XCTestCase {
     light.name = "Native settings light"
     light.lifetime = .keepAlways
     add(light)
+    for _ in 0..<10 {
+      if app.buttons["Training setup"].isHittable { break }
+      app.swipeUp()
+    }
     app.buttons["Training setup"].tap()
     let minutes = app.textFields["Preferred workout minutes"]
     XCTAssertTrue(minutes.waitForExistence(timeout: 10))
@@ -122,6 +126,10 @@ final class WorkoutFlowTests: XCTestCase {
     app.buttons["tab_profile"].tap()
     app.buttons["Appearance and feedback"].tap()
     XCTAssertTrue(app.buttons["appearance_picker"].label.contains("Light"))
+    for _ in 0..<10 {
+      if app.buttons["Training setup"].isHittable { break }
+      app.swipeUp()
+    }
     app.buttons["Training setup"].tap()
     XCTAssertTrue(minutes.waitForExistence(timeout: 10))
     XCTAssertEqual(minutes.value as? String, "45")

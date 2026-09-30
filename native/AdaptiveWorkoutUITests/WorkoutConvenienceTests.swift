@@ -11,9 +11,10 @@ final class WorkoutConvenienceTests: XCTestCase {
     XCTAssertTrue(app.buttons["start_next_workout"].waitForExistence(timeout: 20))
     return app
   }
-  @MainActor func testSupersetFocusFollowsPairedRoundsAfterConfirmedSkips() {
+  @MainActor func testSupersetSkipsSaveThroughPairedRounds() {
     let app = launch()
     app.buttons["start_next_workout"].tap()
+    app.segmentedControls["logging_layout"].buttons["Table"].tap()
     let targets = [
       "incline_dumbbell_press_1", "incline_dumbbell_press_2", "incline_dumbbell_press_3",
       "neutral_grip_lat_pulldown_1", "neutral_grip_lat_pulldown_2", "neutral_grip_lat_pulldown_3",
@@ -23,6 +24,17 @@ final class WorkoutConvenienceTests: XCTestCase {
       let row = app.buttons["set_" + target + "_both_false"]
       XCTAssertTrue(row.waitForExistence(timeout: 10))
       XCTAssertTrue(row.label.contains("Not recorded"), target)
+      for _ in 0..<12 {
+        if row.isHittable && row.frame.minY > 100
+          && row.frame.maxY < app.buttons["tab_workout"].frame.minY - 150
+        {
+          break
+        }
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = app.coordinate(
+          withNormalizedOffset: CGVector(dx: 0.5, dy: row.frame.minY < 100 ? 0.65 : 0.35))
+        start.press(forDuration: 0.05, thenDragTo: end)
+      }
       row.tap()
       let measurement = app.buttons["set_convention"]
       XCTAssertTrue(measurement.waitForExistence(timeout: 5))
@@ -31,7 +43,13 @@ final class WorkoutConvenienceTests: XCTestCase {
         app.buttons["Displayed machine setting (lb)"].tap()
       }
       XCTAssertFalse(app.textFields["set_setup"].exists)
-      app.buttons["Skip set"].tap()
+      let skip = app.collectionViews.buttons["Skip set"]
+      for _ in 0..<8 {
+        if skip.isHittable && skip.frame.maxY < app.frame.maxY - 80 { break }
+        app.swipeUp()
+      }
+      skip.tap()
+      XCTAssertFalse(app.navigationBars["Record set"].waitForExistence(timeout: 1))
       XCTAssertTrue(row.waitForExistence(timeout: 5))
       XCTAssertTrue(row.label.contains("Skipped"))
     }

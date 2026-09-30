@@ -11,7 +11,10 @@ Stitch shell and its committed summary/correction flow, manual previous-set copy
 optional manual setup labels, existing offline reference library and opt-in alerts.
 No dependency or training rule is added. Existing untracked `ios/` is untouched.
 
-Package checks and the generic iOS build pass. Physical UI tests cannot launch
+Package checks and the generic iOS build pass. Simulator verification passed
+154 hosted core tests and all 19 UI cases across the full run and targeted reruns;
+see SWIFT_MIGRATION_STATUS.md for exact failures, fixes and result bundles.
+Physical UI tests cannot launch
 because the free development profile has three installed apps and cannot install
 the additional test runner. No app was uninstalled to bypass that limit. UI tests
 use isolated fixture paths and do not reset normal Documents stores.

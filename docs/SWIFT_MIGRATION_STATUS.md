@@ -523,3 +523,51 @@ VoiceOver acceptance and real-data transfer remain unverified.
   `catalog/OWNER_PROGRAM_SOURCE_REVIEW_2026_09_30.md`; prerequisites are tracked in
   `RELEASE_LOOP_STATUS.md`. Pending catalog reviews and atomic persistence are
   required work, not waived by this branch integration.
+
+
+## September 30 simulator release verification
+
+Owner explicitly requested simulator verification of milestone 1, while physical
+phone checks remain deferred. Xcode 27.0 (27A266a), iOS 27.0 iPhone 17 Pro simulator,
+destination `11CA8B0D-1BBC-41FC-A1D5-865B6A47455B`, explicit `arch=arm64` and
+`ONLY_ACTIVE_ARCH=YES`, parallel testing disabled. Fixture directories/preferences
+isolate all hosted/UI tests from normal app stores and the physical phone.
+
+The initial unspecified-architecture attempt failed to resolve package modules
+for x86_64. The explicit arm64 run compiled and executed the complete suite:
+154 hosted core tests passed; the UI run exposed seven failing cases. Targeted
+reruns verified fixes until all 19 distinct UI cases had passing latest results.
+This is evidence across a full run and targeted reruns, not a claim of one final
+uninterrupted all-green suite. One intermediate rerun was interrupted when the
+simulator shut down; restarting it restored testing, and the interrupted copy
+case subsequently passed. No physical-device result is inferred.
+
+Production fixes:
+- The summary heading and scroll identity now use the committed completion
+  snapshot after controller finish deselection.
+- Reselecting a finished log for correction no longer resets the screen to its
+  summary; the existing finished-Focus warm-up regression passed after the fix.
+- The set editor exposes a keyboard Done action so the keyboard can be dismissed
+  before saving. Missing/malformed input stays unsaved; correcting and saving the
+  actuals passed through the native form.
+
+Test helpers now use short drags to reveal rows above the timer, stable Table
+layout for repeated set assertions, explicit keyboard dismissal and on-screen
+save/skip targets. Profile setup is revealed before tapping after restart.
+Copying assisted pull-up actuals, all three machine measurement conventions,
+paired-round skips, lifecycle/history and saved-preference flows passed.
+
+Result bundles on the local host:
+- `/tmp/workout-release-simulator-arm64-20260930.xcresult` — full initial arm64 run.
+- `/tmp/workout-release-simulator-fixed-20260930.xcresult` — summary/correction and
+  lifecycle reruns, with remaining interaction failures recorded.
+- `/tmp/workout-release-simulator-keyboard-20260930.xcresult` — copy, measurement
+  and paired-round skip passes; malformed-input helper still failed here.
+- `/tmp/workout-release-simulator-validation-20260930.xcresult` — final malformed
+  correction regression passed.
+
+Final checks after production edits: strict native swift-format lint passed,
+package build-tests passed, all 146 Mac package tests passed, generic unsigned
+iOS BUILD SUCCEEDED and ANALYZE SUCCEEDED. The optional App Intents metadata
+warning remains as documented above. Generation/progression activation remains
+outside this verification result; see RELEASE_LOOP_STATUS.md.

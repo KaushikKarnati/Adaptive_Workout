@@ -284,7 +284,7 @@ struct WorkoutView: View {
         }.padding().frame(maxWidth: 720)
       }
       .id(
-        "\(mode)-\(engineMode)-\(hub)-\(choosing)-\(controller.selected?.completed ?? false)-\(reviewCompleted)"
+        "\(mode)-\(engineMode)-\(hub)-\(choosing)-\((controller.selected ?? completedSummary)?.completed ?? false)-\(reviewCompleted)"
       )
       .background(Stitch.canvas)
       .toolbar(.hidden, for: .navigationBar)
@@ -315,7 +315,8 @@ struct WorkoutView: View {
                       ? "Active Adaptive Workout" : "Adaptive Engine")
                     : hub
                       ? "Workout"
-                      : controller.selected?.completed == true && !reviewCompleted
+                      : (controller.selected ?? completedSummary)?.completed == true
+                        && !reviewCompleted
                         ? "Workout Summary" : "Active Workout"
           )
           .font(Stitch.font(typeSize.isAccessibilitySize ? 14 : 18, .semibold))
@@ -443,7 +444,6 @@ struct WorkoutView: View {
       }
       .onChange(of: controller.selected?.completed) { _, complete in
         if complete == true {
-          reviewCompleted = false
           rest.clear()
           model.notifications.clearRest()
           completionArmed = false
