@@ -4,6 +4,8 @@ import WorkoutPersistence
 
 struct SettingsView: View {
   let directory: URL
+  @ObservedObject var notifications: WorkoutNotifications
+  let exerciseReferences: [WgerReference]
   @ObservedObject var setupModel: SetupModel
   @Binding var appearance: String
   @Binding var hapticsEnabled: Bool
@@ -79,6 +81,12 @@ struct SettingsView: View {
             Text("These day labels preserve your plan; automatic rescheduling is not enabled.")
               .font(.caption).foregroundColor(.secondary)
           }
+        }
+        Section {
+          NavigationLink("Exercise library · wger") {
+            ExerciseReferenceView(entries: exerciseReferences)
+          }
+          DisclosureGroup("Notifications") { NotificationSettingsView(model: notifications) }
         }
         Section { DisclosureGroup("Training setup") { SetupView(model: setupModel, cue: cue) } }
         Section { DisclosureGroup("My gym") { GymSettingsView(directory: directory, cue: cue) } }

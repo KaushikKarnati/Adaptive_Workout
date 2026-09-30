@@ -33,10 +33,12 @@ final class AppModel: ObservableObject {
   @Published var controller: ProgramLogController?
   @Published var adaptiveController: AdaptiveGenerationController?
   @Published var error: String?
+  @Published private(set) var exerciseReferences: [WgerReference] = []
   @Published private(set) var appearance = "system"
   @Published private(set) var hapticsEnabled = true
   @Published private(set) var loggingLayout = "cards"
   @Published private(set) var lastTrainedEnabled = false
+  let notifications = WorkoutNotifications()
   private var appearanceRepository: SqliteAppearanceRepository?
   private var preferences = UserDefaults.standard
   private let hostedIdentity = UUID().uuidString
@@ -83,6 +85,10 @@ final class AppModel: ObservableObject {
       let layout = preferences.string(forKey: "adaptiveWorkout.loggingLayout") ?? "cards"
       loggingLayout = ["cards", "table", "focus"].contains(layout) ? layout : "cards"
       lastTrainedEnabled = preferences.bool(forKey: "adaptiveWorkout.lastTrainedEnabled")
+      notifications.configure(preferences: preferences, fixture: context.preferencesDomain != nil)
+      if let source = Bundle.main.url(forResource: "wger-reference", withExtension: "json") {
+        exerciseReferences = (try? WgerReferenceRepository.load(source)) ?? []
+      }
       applyAppearance(stores.appearance)
     } catch { self.error = "Could not open local storage. Existing data has been preserved." }
   }

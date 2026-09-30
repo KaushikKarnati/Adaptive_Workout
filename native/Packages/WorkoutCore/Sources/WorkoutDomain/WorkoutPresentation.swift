@@ -21,14 +21,7 @@ public func manualLoadConventions(for exercise: ProgramExercise, variant: String
   guard
     exercise.alternatives.isEmpty ? variant == exercise.id : exercise.alternatives.contains(variant)
   else { return [] }
-  if ["unassisted_pull_up", "hanging_knee_raise", "ab_wheel_rollout"].contains(variant) {
-    return [.bodyweight]
-  }
-  if ["incline_dumbbell_press", "dumbbell_shoulder_press"].contains(variant) {
-    return [.perDumbbell]
-  }
-  if variant == "assisted_machine_pull_up" { return [.assistance] }
-  return [.machineSetting, .totalLoad, .platesOnly]
+  return manualLoadConventions(variant: variant)
 }
 
 public struct ManualSetSlot: Equatable, Sendable, Identifiable {

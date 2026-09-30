@@ -52,17 +52,12 @@ final class MockupFlowTests: XCTestCase {
     let skip = app.buttons["Skip set"]
     reveal(skip, in: app)
     skip.tap()
-    let setup = app.textFields["set_setup"]
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     XCTAssertFalse(app.textFields["set_load"].exists)
     XCTAssertFalse(app.textFields["set_reps"].exists)
     XCTAssertFalse(app.textFields["set_rir"].exists)
     XCTAssertFalse(app.buttons["set_validity"].exists)
     XCTAssertFalse(app.buttons["save_set"].exists)
-    setup.tap()
-    setup.typeText("Skipped fixture dumbbells")
-    app.buttons["set_convention"].tap()
-    app.buttons["Pounds per dumbbell"].tap()
     // The sheet's Form and the underlying Focus screen both expose Skip set.
     let saveSkip = app.collectionViews.buttons["Skip set"]
     reveal(saveSkip, in: app)
@@ -124,12 +119,7 @@ final class MockupFlowTests: XCTestCase {
     let addWarmup = app.buttons.matching(identifier: "Add warm-up").firstMatch
     reveal(addWarmup, in: app)
     addWarmup.tap()
-    let setup = app.textFields["set_setup"]
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
-    setup.tap()
-    setup.typeText("Warmup fixture dumbbells")
-    app.buttons["set_convention"].tap()
-    app.buttons["Pounds per dumbbell"].tap()
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     app.swipeUp()
     app.textFields["set_load"].tap()
     app.textFields["set_load"].typeText("10")
@@ -163,8 +153,7 @@ final class MockupFlowTests: XCTestCase {
     XCTAssertLessThan(warmup.frame.maxY, timer.frame.minY - 16)
     XCTAssertTrue(warmup.label.contains("10 lb"))
     warmup.tap()
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
-    XCTAssertEqual(setup.value as? String, "Warmup fixture dumbbells")
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     XCTAssertEqual(app.textFields["set_load"].value as? String, "10")
     XCTAssertEqual(app.textFields["set_reps"].value as? String, "5")
     app.buttons["Cancel"].tap()

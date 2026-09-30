@@ -140,8 +140,10 @@ public final class ProgramLogController: ObservableObject {
         else {
           throw ControllerFailure.unconfirmed
         }
+        let justFinished =
+          pending.completed && logs.contains { $0.id == pending.id && !$0.completed }
         logs = updated
-        selectedID = pending.id
+        selectedID = justFinished ? nil : pending.id
         self.pending = nil
       }
       self.action = nil

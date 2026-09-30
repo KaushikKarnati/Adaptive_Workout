@@ -61,7 +61,9 @@ struct HomeView: View {
           }
         }
         SettingsView(
-          directory: model.directory, setupModel: setup, appearance: model.appearanceBinding,
+          directory: model.directory, notifications: model.notifications,
+          exerciseReferences: model.exerciseReferences, setupModel: setup,
+          appearance: model.appearanceBinding,
           hapticsEnabled: model.hapticsBinding, cue: model.cue
         ).opacity(tab == 3 ? 1 : 0).allowsHitTesting(tab == 3).accessibilityHidden(tab != 3)
       }
@@ -150,6 +152,7 @@ struct WorkoutView: View {
   @State private var historyDays = 0
   @State private var historyRepetitionMetrics: [ExerciseSeriesKey: Bool] = [:]
   @State private var editor: SetEditorRequest?
+  @State private var completedSummary: ProgramLog?
   @State private var choosing = false
   @State private var switchTarget: ProgramSession?
   @State private var deleting: ProgramLog?
@@ -230,13 +233,21 @@ struct WorkoutView: View {
                 calibrationMiniBanner(adaptive.calibrationProgress)
               }
               dashboard
-            } else if let log = controller.selected, log.completed, !reviewCompleted {
+            } else if let log = controller.selected ?? completedSummary, log.completed,
+              !reviewCompleted
+            {
               StitchSummary(
                 log: log,
                 next: {
+                  completedSummary = nil
                   controller.select(nil)
                   hub = true
-                }, corrections: { reviewCompleted = true })
+                },
+                corrections: {
+                  controller.select(log.id)
+                  completedSummary = nil
+                  reviewCompleted = true
+                })
             } else {
               logger
             }
@@ -415,8 +426,17 @@ struct WorkoutView: View {
           )
         }
       }
-      .onChange(of: controller.selectedID) {
+      .onChange(of: controller.selectedID) { previous, current in
+        if current == nil, let previous,
+          let finished = controller.logs.first(where: { $0.id == previous && $0.completed })
+        {
+          completedSummary = finished
+          reviewCompleted = false
+        } else if current != nil {
+          completedSummary = nil
+        }
         rest.clear()
+        model.notifications.clearRest()
         completionArmed = false
         focusedExercise = nil
         expanded = []
@@ -425,6 +445,7 @@ struct WorkoutView: View {
         if complete == true {
           reviewCompleted = false
           rest.clear()
+          model.notifications.clearRest()
           completionArmed = false
           Task { await model.adaptiveController?.load() }
         }
@@ -859,6 +880,7 @@ struct WorkoutView: View {
       Button("Start \(block.restSeconds)s rest", systemImage: "timer") {
         do {
           try rest.start(seconds: block.restSeconds, now: Date())
+          model.notifications.startRest(seconds: block.restSeconds)
           restDuration = block.restSeconds
           arm()
           model.cue(.impact)
@@ -987,6 +1009,7 @@ struct WorkoutView: View {
       completed: log.completed
     ) {
       rest.clear()
+      model.notifications.clearRest()
       completionArmed = false
       model.cue(.selection)
     }

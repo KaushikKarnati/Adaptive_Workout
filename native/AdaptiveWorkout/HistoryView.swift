@@ -53,7 +53,7 @@ struct HistoryView: View {
             StitchLabel(text: "Recorded working sets")
             Text(item.name).font(Stitch.font(22, .semibold))
             Text(
-              "\(item.key.variant.replacingOccurrences(of: "_", with: " ")) · \(item.key.setup) · \(item.key.side.rawValue)"
+              "\(item.key.variant.replacingOccurrences(of: "_", with: " ")) · \(item.key.side.rawValue)"
             ).font(.subheadline).foregroundColor(.secondary)
             Text(conventionLabel(item.key.convention)).font(.caption)
             if item.key.convention == .assistance {

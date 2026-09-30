@@ -168,12 +168,13 @@ final class ManualLoggingTests: XCTestCase {
       entry(load: -1), entry(load: 1_000_000_000_001), entry(load: nil), entry(reps: nil),
       entry(reps: -1),
       entry(reps: 10_001), entry(rir: -1), entry(rir: 10_001), entry(index: 0), entry(index: 4),
-      entry(setup: " "), entry(setup: String(repeating: "x", count: 121)),
+      entry(setup: String(repeating: "x", count: 121)),
       entry(setup: String(repeating: "😀", count: 61)),
       entry(variant: "unknown"), entry(slot: "unknown"), entry(skipped: true), entry(side: .left),
     ] {
       XCTAssertThrowsError(try seed().record(record))
     }
+    XCTAssertNoThrow(try seed().record(entry(setup: " ")))
     XCTAssertEqual(try seed().record(entry(load: 0, reps: 0, rir: nil)).sets.first?.load, 0)
     XCTAssertEqual(
       try seed().record(entry(load: 1_000_000_000_000, reps: 10_000, rir: 10_000)).sets.count, 1)

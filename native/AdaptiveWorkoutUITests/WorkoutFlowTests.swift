@@ -12,12 +12,7 @@ final class WorkoutFlowTests: XCTestCase {
     let firstSet = app.buttons["set_incline_dumbbell_press_1_both_false"]
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     firstSet.tap()
-    let setup = app.textFields["set_setup"]
-    XCTAssertTrue(setup.waitForExistence(timeout: 5))
-    setup.tap()
-    setup.typeText("Fixture dumbbells")
-    app.buttons["set_convention"].tap()
-    app.buttons["Pounds per dumbbell"].tap()
+    XCTAssertFalse(app.textFields["set_setup"].exists)
     let load = app.textFields["set_load"]
     load.tap()
     load.typeText("20")

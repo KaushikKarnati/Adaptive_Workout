@@ -45,7 +45,9 @@ struct SetEditor: View {
                 set: { value in
                   if variant != value {
                     variant = value
-                    convention = ""
+                    setup = ""
+                    let offered = manualLoadConventions(for: exercise, variant: value)
+                    convention = offered.count == 1 ? offered[0].rawValue : ""
                     load = ""
                     cue(.selection)
                   }
@@ -57,7 +59,19 @@ struct SetEditor: View {
               }
             }
           }
-          TextField("Exact machine / setup", text: $setup).accessibilityIdentifier("set_setup")
+          if !skipOnly,
+            let previous = log.previousSet(
+              slot: exercise.id, index: index, side: side, warmup: warmup)
+          {
+            Button("Copy previous set") {
+              if variant != previous.variant { setup = "" }
+              variant = previous.variant
+              convention = previous.convention.rawValue
+              load = previous.load.map(formatPounds) ?? ""
+              reps = previous.reps.map(String.init) ?? ""
+              cue(.selection)
+            }.accessibilityIdentifier("copy_previous_set")
+          }
           Picker(
             "Load measurement",
             selection: Binding(
@@ -103,7 +117,7 @@ struct SetEditor: View {
           }
         } footer: {
           Text(
-            "Use a setup label you can recognize next time. Only valid working sets appear in graphs. Logging does not verify a starting load."
+            "Copy fills weight, reps, variation and load measurement. Review each set before saving. Logging does not verify a starting load."
           )
         }
         if let error { Section { Text(error).foregroundColor(.red) } }
@@ -128,7 +142,8 @@ struct SetEditor: View {
         }
         variant = set?.variant ?? (exercise.alternatives.isEmpty ? exercise.id : "")
         setup = set?.setup ?? ""
-        convention = set?.convention.rawValue ?? ""
+        let offered = manualLoadConventions(for: exercise, variant: variant)
+        convention = set?.convention.rawValue ?? (offered.count == 1 ? offered[0].rawValue : "")
         load = set?.load.map(formatPounds) ?? ""
         reps = set?.reps.map(String.init) ?? ""
         rir = set?.rir.map(String.init) ?? ""
@@ -158,7 +173,8 @@ struct SetEditor: View {
       save(set)
       dismiss()
     } catch {
-      self.error = "Check the variation, setup, load measurement and numbers. RIR may be blank."
+      self.error =
+        "Choose a variation and load measurement, then enter valid weight and reps. RIR may be blank."
       cue(.error)
     }
   }

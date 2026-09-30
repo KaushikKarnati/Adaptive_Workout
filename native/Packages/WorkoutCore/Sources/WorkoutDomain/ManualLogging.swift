@@ -188,7 +188,6 @@ public struct ProgramLog: Equatable, Sendable, Identifiable {
       e.eachSide ? set.side != .both : set.side == .both
     else { throw LoggingException("invalid_set_identity") }
     guard e.alternatives.isEmpty ? set.variant == e.id : e.alternatives.contains(set.variant),
-      !set.setup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
       set.setup.utf16.count <= 120
     else {
       throw LoggingException(set.skipped ? "invalid_skip" : "invalid_actuals")

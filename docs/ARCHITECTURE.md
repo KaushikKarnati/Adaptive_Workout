@@ -336,3 +336,42 @@ is an unavailable compatibility shell: both capture and save reject. It must not
 be registered until the atomic consistency and durable provenance requirements
 of ADR 0014 are implemented. This remediation restores the gate; it does not
 implement a production atomic adapter or complete catalog reviews.
+## September 25 manual workflow and reference content
+
+`ManualWorkoutFlow` shares load-option semantics with the manual validator and
+orders explicit working targets by block, round, exercise and side. Views render
+the first unrecorded target; copying earlier actuals only prefills an unsaved form.
+Manual setup labels may now be empty under owner authorization. This does not
+relax verified setup or generated-recommendation contracts. Unknown manual setup
+is session-scoped in descriptive chart groups. Canonical legacy payloads remain
+unchanged. `ProgramLogController` deselects only newly acknowledged completions,
+including retries, retaining completed-history correction behavior.
+
+`WorkoutNotifications` owns native notification effects on the main actor and
+saves independent local preferences. `WorkoutReminderSchedule` validates explicit
+calendar inputs outside views. Core logging never requires notification permission.
+No notification contains actual exercise/health measurements; test fixtures disable
+system notification mutations. Local alerts remain subject to iOS delivery policy.
+
+`WgerReferenceRepository` verifies a separately bundled, pinned presentation-only
+name/attribution index. It does not expose `ExerciseCatalog` or supply exercise
+selection, training rules or program bindings. The broader source index does not
+replace the reviewed-catalog pipeline or activate any pending review gate.
+
+
+### Release branch reconciliation — September 30
+
+`codex/workout-release-loop` reconciles the Stitch presentation with main and the
+reference redesign branch. It retains generation verification gates and adds the
+manual convenience behavior specified by ADR 0019. The editor omits the free-text
+setup prompt, retains stored labels on same-variation corrections, and copies only
+variation, measurement, weight and repetitions from the prior same-side/category
+set. RIR and validity still require review. Empty manual setup labels remain
+session-scoped in descriptive history and never verify training equipment.
+
+The Stitch summary uses a committed completed-log snapshot when the controller
+returns to an unselected state after finishing. Correction explicitly reselects
+the saved log. Rest alert cancellation follows timer clearing and workout changes.
+The offline wger reference and opt-in alert settings are available from Profile.
+See [release loop status](RELEASE_LOOP_STATUS.md) for remaining generation and
+progression requirements.
