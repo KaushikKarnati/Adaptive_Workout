@@ -14,10 +14,14 @@ No dependency or training rule is added. Existing untracked `ios/` is untouched.
 Package checks and the generic iOS build pass. Simulator verification passed
 154 hosted core tests and all 19 UI cases across the full run and targeted reruns;
 see SWIFT_MIGRATION_STATUS.md for exact failures, fixes and result bundles.
-Physical UI tests cannot launch
-because the free development profile has three installed apps and cannot install
-the additional test runner. No app was uninstalled to bypass that limit. UI tests
-use isolated fixture paths and do not reset normal Documents stores.
+The owner's phone remains constrained by the free profile's three-app limit.
+Owner-authorized physical testing on a separate iPhone 16 Pro passed 154 hosted
+core tests and all 19 ordinary UI cases across the full run and targeted rerun.
+An additional isolated imported-history restart test passed. Copied logs were
+removed afterward. The cleanup operation unexpectedly cleared the whole test
+app's sandbox; preservation of any pre-existing data on that test phone is
+unverified. See SWIFT_MIGRATION_STATUS.md for the incident and exact evidence.
+The test code itself uses isolated fixture paths.
 
 ## 2. Production generation prerequisites
 

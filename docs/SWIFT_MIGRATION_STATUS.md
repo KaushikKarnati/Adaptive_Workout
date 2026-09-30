@@ -571,3 +571,52 @@ package build-tests passed, all 146 Mac package tests passed, generic unsigned
 iOS BUILD SUCCEEDED and ANALYZE SUCCEEDED. The optional App Intents metadata
 warning remains as documented above. Generation/progression activation remains
 outside this verification result; see RELEASE_LOOP_STATUS.md.
+
+
+## September 30 physical-device verification and private import check
+
+Owner authorized testing on the connected friend's physical iPhone 16 Pro,
+iOS 27.0, and temporarily copying the owner's workout data for testing followed
+by removal. The owner's iPhone was not the test destination.
+
+The first build failed because the UI runner provisioning profile did not include
+the selected phone. Automatic provisioning/device registration resolved that
+issue; the runner then installed and executed successfully.
+
+- All 154 hosted core tests passed on the physical phone.
+- The full standard UI run passed 18 of the 19 ordinary cases. Its optional
+  private-import case skipped because no import environment was supplied there.
+- The remaining save/restart/correction case failed because the test attempted
+  a Save-button tap with no reachable hit point. Its helper now dismisses the
+  keyboard and explicitly reveals Save. The targeted physical rerun passed,
+  including correction, restart, history, early finish and deletion. All 19
+  ordinary UI cases therefore have passing latest physical results across the
+  full run and targeted rerun, not one uninterrupted all-green suite.
+- The separate optional imported-history test passed using a freshly backed-up
+  private database in a unique `UITestFixtures/private_import_…` directory.
+  Saved history opened and survived process restart; every database table's rows
+  remained unchanged and SQLite integrity passed. No source records or actual
+  load values are included in this repository or its tests.
+- Copied logs were removed from the phone and their unique directory was
+  subsequently verified absent. The test runner was uninstalled and the main
+  app relaunched without fixture flags.
+- Cleanup incident: `devicectl copy to --remove-existing-content true` affected
+  the entire app data domain rather than only the requested import directory.
+  Documents was verified empty immediately afterward; Library contained empty
+  Caches/Preferences directories. This was broader than intended and was reported
+  to the owner. No prior backup of the friend's normal app data was taken, so
+  preservation of any pre-existing normal app data cannot be claimed. Do not
+  reuse this cleanup method. Prefer the app's validated, fixture-scoped reset
+  boundary or a purpose-built fixture deletion action.
+- Final strict native formatting and diff whitespace checks passed. No
+  production source was changed by this physical-testing follow-up.
+
+Local result bundles:
+- `/tmp/workout-friend-suite-20260930.xcresult` — full hosted/standard UI run.
+- `/tmp/workout-friend-private-20260930.xcresult` — imported-history restart pass.
+- `/tmp/workout-friend-restart-fixed-20260930.xcresult` — corrected save/restart pass.
+
+This verifies the exercised installed native flows and the temporary imported
+history read/restart scenario. Airplane-mode toggling, physical haptic comfort,
+VoiceOver acceptance, power-loss recovery and a generated-workout progression
+loop were not established by these tests.

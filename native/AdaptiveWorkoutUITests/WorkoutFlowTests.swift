@@ -22,7 +22,7 @@ final class WorkoutFlowTests: XCTestCase {
     app.swipeUp()
     app.buttons["set_validity"].tap()
     app.buttons["Valid"].tap()
-    app.buttons["save_set"].tap()
+    saveSet(app)
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     XCTAssertTrue(firstSet.label.contains("20 lb"))
     app.buttons["tab_profile"].tap()
@@ -43,7 +43,7 @@ final class WorkoutFlowTests: XCTestCase {
     // Clear using the known existing fixture value, not assumptions about real data.
     corrected.typeText(XCUIKeyboardKey.delete.rawValue + "9")
     app.swipeUp()
-    app.buttons["save_set"].tap()
+    saveSet(app)
     XCTAssertTrue(firstSet.waitForExistence(timeout: 10))
     XCTAssertTrue(firstSet.label.contains("9 reps"))
     let shot = XCTAttachment(screenshot: app.screenshot())
@@ -137,6 +137,20 @@ final class WorkoutFlowTests: XCTestCase {
     setup.name = "Native saved setup"
     setup.lifetime = .keepAlways
     add(setup)
+  }
+
+  @MainActor private func saveSet(_ app: XCUIApplication) {
+    if app.keyboards.firstMatch.exists {
+      app.buttons["dismiss_set_keyboard"].tap()
+    }
+    let save = app.buttons["save_set"]
+    for _ in 0..<8 {
+      if save.isHittable && save.frame.maxY < app.frame.maxY - 80 { break }
+      app.swipeUp()
+    }
+    XCTAssertTrue(save.isHittable)
+    save.tap()
+    XCTAssertFalse(app.navigationBars["Record set"].waitForExistence(timeout: 1))
   }
 
 }

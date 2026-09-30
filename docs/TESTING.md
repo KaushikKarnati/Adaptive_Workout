@@ -251,3 +251,20 @@ For exercise selection, tests must also cover:
 ## Simulation rule
 
 Simulation code must use seeded randomness, preserve reproducible cases, report distributions rather than only averages, and never silently change production rules.
+
+
+## Optional private imported-history smoke test
+
+`ImportedHistoryTests` is skipped unless a caller explicitly supplies
+`ADAPTIVE_IMPORTED_FIXTURE` (a `private_import_` fixture name) and
+`ADAPTIVE_IMPORTED_FINISHED_COUNT` to the UI test runner's environment. It opens
+saved history and repeats after app termination/relaunch. It never embeds private
+records, resets an import or modifies a recorded set. A caller must have explicit
+authorization, copy only needed data into that isolated directory, check database
+integrity/row preservation afterward and verify removal from the target device.
+The test is not a general migration or restore acceptance test.
+
+Do not use `devicectl copy to --remove-existing-content true` to clear a private
+fixture: a physical run cleared the app data domain despite a fixture destination.
+Use a verified fixture-scoped reset/deletion boundary and preserve normal stores.
+See the September 30 physical entry in SWIFT_MIGRATION_STATUS.md.
