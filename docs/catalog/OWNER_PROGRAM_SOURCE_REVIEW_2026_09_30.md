@@ -60,3 +60,15 @@ Physical equipment confirmation remains separate even after catalog review.
 Use a stable setup selected once per gym rather than arbitrary labels on each set.
 Displayed load values are comparable only within a confirmed measurement/setup
 context; this document does not add cross-machine conversion rules.
+
+
+## Owner naming direction — September 30
+
+Use the selected wger machine exercise names for display and selection. Brands
+and models are deferred and must not be required for this milestone. Preserve
+existing program/variant identities and historical payloads; source display names
+are not replacements for those identifiers. Unresolved source matches remain
+unresolved rather than being assigned a similar-sounding machine. This direction
+approves the naming approach, not pending catalog reviews or cross-machine load
+conversion. Physical setup confirmation can use the source name plus a stable
+local setup identity without manufacturer metadata.

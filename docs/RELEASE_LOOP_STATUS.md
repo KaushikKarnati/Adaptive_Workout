@@ -30,7 +30,13 @@ use isolated fixture paths and do not reset normal Documents stores.
 These requirements come from ADRs 0003, 0006, 0012–0016 and the catalog contract.
 Software implementation cannot supply missing review approvals. Broad wger
 equipment categories are reference metadata, not verification of a physical machine.
-Brand/model and displayed load alone do not establish equivalent resistance.
+Owner direction, September 30: use the machine exercise names from the pinned
+wger source, without collecting or requiring brands/models for this milestone.
+Names such as Leg Press and Shoulder Press, on Machine are display labels tied
+to stable source identities; retain the internal variant IDs used by existing logs.
+A machine name does not supply missing source equipment requirements or establish
+load equivalence. Keep the explicit load convention and confirmed setup boundary;
+no cross-machine conversion or automatic promotion of manual logs is approved.
 
 ## 3. Progression prerequisites
 
