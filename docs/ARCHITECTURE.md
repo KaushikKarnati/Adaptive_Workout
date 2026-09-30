@@ -358,6 +358,13 @@ name/attribution index. It does not expose `ExerciseCatalog` or supply exercise
 selection, training rules or program bindings. The broader source index does not
 replace the reviewed-catalog pipeline or activate any pending review gate.
 
+`OwnerProgramSourceCandidates` loads an integrity-checked package resource for
+the owner-program review workflow. The deterministic importer preserves upstream
+identities and separate attribution, rejects unsupported taxonomy values and
+keeps mapped equipment as candidates. This source projection is separate from
+both the reference library and the selectable domain catalog. It provides no
+trusted bindings or review approvals. See the September 30 owner source audit.
+
 
 ### Release branch reconciliation — September 30
 

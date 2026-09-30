@@ -25,6 +25,13 @@ The test code itself uses isolated fixture paths.
 
 ## 2. Production generation prerequisites
 
+September 30 progress: an integrity-checked native candidate loader imports 25
+real pinned wger records. Twenty-two map to disabled review candidates; three
+reject unsupported muscle mappings. Source names may differ from program labels
+under owner direction, while exercise compatibility remains reviewable. See the
+source audit for identities and reproduction. This completes candidate provenance
+import, not catalog approval, production atomic saving or the new-user flow.
+
 | Requirement | Observed state | Required completion |
 | --- | --- | --- |
 | Real catalog | Owner slice contains disabled synthetic placeholders; real benchmark slice also has pending reviews | Review the candidate source audit in `catalog/OWNER_PROGRAM_SOURCE_REVIEW_2026_09_30.md`; complete product/science/safety/equipment/license reviews and exact approved bindings |

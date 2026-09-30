@@ -620,3 +620,32 @@ This verifies the exercised installed native flows and the temporary imported
 history read/restart scenario. Airplane-mode toggling, physical haptic comfort,
 VoiceOver acceptance, power-loss recovery and a generated-workout progression
 loop were not established by these tests.
+
+### September 30 — Step 2 source-validation slice
+
+Added an offline, package-bundled owner source-candidate projection with real
+wger provenance and checked compressed archive/resource digests. Twenty-five
+selected records preserve separate base/English-translation identities,
+authorship and license data. Twenty-two map to disabled review candidates; three
+reject unsupported muscle IDs. Added raw license `short_name` validation and a
+regression case. Names may differ from program labels under owner direction;
+no review, equipment verification, binding or recommendation is self-approved.
+The production unavailable generation source remains unchanged. No installed
+phone data was touched in this slice.
+
+Validation completed:
+
+- Strict native Swift formatting lint: passed.
+- `swift build --build-tests --package-path native/Packages/WorkoutCore`: passed.
+- `swift test --package-path native/Packages/WorkoutCore`: 149 tests passed.
+- Two deterministic extraction/integrity Python tests: passed; source reproduction
+  `python3 tools/import_owner_program_candidates.py --check`: passed.
+- Unsigned generic iOS build and analyze: passed. The previously documented
+  optional App Intents metadata warning remains; no new warning was observed.
+- Explicit arm64 iPhone 17 Pro / iOS 27 simulator `AdaptiveWorkoutTests`: 157
+  hosted tests passed, including bundled-source loading and the new regression.
+  Result: `/tmp/workout-step2-core-simulator.xcresult`.
+- Final whitespace/diff review: passed. UI tests and physical tests were not rerun
+  for this source-import slice. The new-user generate/save/reopen acceptance flow
+  remains incomplete, pending reviewed metadata, durable verified inputs and the
+  atomic production adapter.

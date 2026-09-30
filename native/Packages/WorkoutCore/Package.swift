@@ -13,7 +13,9 @@ let package = Package(
     .systemLibrary(name: "CSQLite"),
     .target(name: "WorkoutDomain"),
     .target(name: "WorkoutApplication", dependencies: ["WorkoutDomain"]),
-    .target(name: "WorkoutPersistence", dependencies: ["WorkoutDomain", "CSQLite"]),
+    .target(
+      name: "WorkoutPersistence", dependencies: ["WorkoutDomain", "CSQLite"],
+      resources: [.copy("Resources/owner-program-source-candidates.json")]),
     .testTarget(
       name: "WorkoutCoreTests",
       dependencies: ["WorkoutDomain", "WorkoutApplication", "WorkoutPersistence"]),

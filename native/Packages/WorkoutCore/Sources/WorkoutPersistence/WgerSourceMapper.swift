@@ -271,6 +271,11 @@ public struct WgerSourceMapper: Sendable {
   }
   private func known(_ id: Int, _ raw: Any?, _ dictionary: [Int: String], _ field: String) throws {
     guard let expected = dictionary[id] else { throw WgerRecordError("unknown_\(field)_id") }
+    if field == "license", let object = raw as? [String: Any], object["short_name"] != nil {
+      guard let name = object["short_name"] as? String, ManualJSON.bytesEqual(name, expected) else {
+        throw WgerRecordError("license_name_mismatch")
+      }
+    }
     if let object = raw as? [String: Any], object["name"] != nil {
       guard let name = object["name"] as? String, ManualJSON.bytesEqual(name, expected) else {
         throw WgerRecordError("\(field)_name_mismatch")

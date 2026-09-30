@@ -18,8 +18,8 @@ manufacturer, pulley ratio, machine instance, load convention or available ladde
 | --- | --- | --- | --- |
 | `incline_dumbbell_press` | [Incline Bench Press - Dumbbell](https://wger.de/api/v2/exerciseinfo/537/), base ID 537, translation ID 210 | Dumbbell, Incline bench | Identity, classification, safety, requirements and license review pending. |
 | `neutral_grip_lat_pulldown` | [Neutral Grip Lat Pulldown](https://wger.de/api/v2/exerciseinfo/1510/), base ID 1510, translation ID 2469 | Cable machine | Identity, classification, safety, requirements and license review pending. |
-| `incline_machine_press` | No candidate selected | Unknown | Exact variant/source and requirements unresolved |
-| `chest_supported_row` | No candidate selected | Unknown | Exact variant/source and requirements unresolved |
+| `incline_machine_press` | [Machine Incline Chest Press](https://wger.de/api/v2/exerciseinfo/2632/), base ID 2632, translation ID 5060 | Empty source list; requirements unknown | Community custom importer description; identity, equipment and all reviews pending. |
+| `chest_supported_row` | [Incline Chest-Supported Dumbbell Row](https://wger.de/api/v2/exerciseinfo/1283/), base ID 1283, translation ID 2250 | Bench, Dumbbell | Candidate dumbbell version; bench angle and exact requirements require review. |
 | `cable_lateral_raise` | [Cable Lateral Raises (Single Arm)](https://wger.de/api/v2/exerciseinfo/1378/), base ID 1378, translation ID 2345 | Cable machine | Source is single arm; approved manual slot is bilateral. Laterality review required. |
 | `cable_chest_fly` | [Cable Fly Middle Chest](https://wger.de/api/v2/exerciseinfo/1689/), base ID 1689, translation ID 2808 | Cable machine | Identity, classification, safety, requirements and license review pending. |
 | `leg_press` | [Leg Press](https://wger.de/api/v2/exerciseinfo/371/), base ID 371, translation ID 788 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
@@ -27,13 +27,13 @@ manufacturer, pulley ratio, machine instance, load convention or available ladde
 | `seated_leg_curl` | [Leg Curls (sitting)](https://wger.de/api/v2/exerciseinfo/366/), base ID 366, translation ID 117 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
 | `lying_leg_curl` | [Leg Curls (laying)](https://wger.de/api/v2/exerciseinfo/365/), base ID 365, translation ID 154 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
 | `machine_calf_raise` | [Machine Seated Calf Raise](https://wger.de/api/v2/exerciseinfo/2628/), base ID 2628, translation ID 5056 | Empty source list; requirements unknown | Source is seated; program machine variant is not specified. |
-| `cable_crunch` | No candidate selected | Unknown | Exact variant/source and requirements unresolved |
+| `cable_crunch` | [Crunches With Cable](https://wger.de/api/v2/exerciseinfo/173/), base ID 173, translation ID 92 | Cable machine | Candidate kneeling execution; attachment/capability and all reviews pending. |
 | `machine_shoulder_press` | [Shoulder Press, on Machine](https://wger.de/api/v2/exerciseinfo/543/), base ID 543, translation ID 152 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
 | `dumbbell_shoulder_press` | [Shoulder Press, Dumbbells](https://wger.de/api/v2/exerciseinfo/567/), base ID 567, translation ID 123 | Dumbbell | Identity, classification, safety, requirements and license review pending. |
 | `reverse_pec_deck` | [Pec deck rear delt fly](https://wger.de/api/v2/exerciseinfo/1775/), base ID 1775, translation ID 2909 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
 | `cable_curl` | [Cable Curls](https://wger.de/api/v2/exerciseinfo/1531/), base ID 1531, translation ID 2489 | Cable machine | Identity, classification, safety, requirements and license review pending. |
 | `overhead_cable_triceps_extension` | [Overhead Cable Tricep Extension](https://wger.de/api/v2/exerciseinfo/1513/), base ID 1513, translation ID 2472 | Cable machine | Identity, classification, safety, requirements and license review pending. |
-| `supported_knee_raise` | No candidate selected | Unknown | Exact variant/source and requirements unresolved |
+| `supported_knee_raise` | [Leg Raises, Standing](https://wger.de/api/v2/exerciseinfo/378/), base ID 378, translation ID 126 | Empty source list; requirements unknown | Forearm-supported execution in source prose; knee-flexion variant not established. Unsupported muscle 3 rejects import. |
 | `unassisted_pull_up` | [Pull-ups](https://wger.de/api/v2/exerciseinfo/475/), base ID 475, translation ID 107 | Pull-up bar | Grip and execution review required. |
 | `assisted_machine_pull_up` | [Pull Ups on Machine](https://wger.de/api/v2/exerciseinfo/477/), base ID 477, translation ID 140 | Empty source list; requirements unknown | Identity, classification, safety, requirements and license review pending. |
 | `seated_cable_row` | [Seated Cable Row](https://wger.de/api/v2/exerciseinfo/1117/), base ID 1117, translation ID 2086 | Cable machine | Identity, classification, safety, requirements and license review pending. |
@@ -51,8 +51,7 @@ equipment requirements and capabilities. Only after all five explicit approvals
 may availability become enabled and an exact catalog-digest binding be registered.
 
 Unsupported matches above deliberately remain unresolved. In particular, do not
-substitute a Smith/multi-press record for an incline machine press, a dumbbell row
-for an unspecified chest-supported machine, hanging raises for supported knee
+substitute a Smith/multi-press record for an incline machine press, an unsupported rowing setup, hanging raises for supported knee
 raises, or an unrelated crunch for cable crunch. Owner-reviewed source identity
 and exact requirements must settle those cases.
 
@@ -72,3 +71,28 @@ unresolved rather than being assigned a similar-sounding machine. This direction
 approves the naming approach, not pending catalog reviews or cross-machine load
 conversion. Physical setup confirmation can use the source name plus a stable
 local setup identity without manufacturer metadata.
+
+## Native source-validation implementation
+
+Owner direction permits differing source names when the intended exercise matches.
+Candidate selection in the table above is review preparation, not a new equivalence rule.
+`OwnerProgramSourceCandidates.load()` now verifies a bundled offline projection
+of 25 real source records through the native `WgerSourceMapper`. Twenty-two map
+to disabled review candidates. Records 378 and 1573 reject unsupported Serratus
+anterior; record 1972 rejects unsupported Brachialis. No muscle is dropped or
+coerced to make these pass.
+
+The projection preserves base/translation identities, independent licenses and
+authors, source timestamps and categorical equipment/muscle lists. Instructions,
+notes and media are omitted. Empty equipment lists remain unresolved requirements.
+The old disabled owner catalog and empty trusted bindings remain untouched.
+
+Reproduce with `python3 tools/import_owner_program_candidates.py --check`.
+Resource SHA-256:
+`332b4bda6581ab253e75aaa45a4cfb2f4e83331163b07dda9e655202335eb79b`.
+Dictionary expectations remain the approved September 8 pinned dictionary values.
+Source license objects now also have their API `short_name` checked against ID.
+
+Product/science/safety/equipment/license decisions, physical setup confirmation,
+and the atomic generation/save adapter are still required for a real new-user
+workout. These candidates grant none of those approvals.
