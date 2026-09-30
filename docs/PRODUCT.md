@@ -170,3 +170,15 @@ Any injury or concerning event to which an app recommendation may reasonably hav
 After the two-person test meets its approved goals, Apple Health integration is complete, and the required safety, privacy, and quality gates pass, the product may expand to an invite-only TestFlight beta. Initial beta participants may be recruited from relevant Reddit communities in accordance with community rules. Recruitment language, consent, support capacity, participant criteria, retention targets, and willingness-to-pay measurement remain to be defined before recruitment begins.
 
 The two-person test should specifically evaluate whether the recommended exercise is feasible, whether substitutions behave correctly, whether explanations match the actual rule used, and whether identical inputs reproduce identical recommendations.
+
+## September 30 adaptive-profile direction
+
+The owner authorized reusable individual onboarding, a structured editable
+adaptive-program draft with optional exercise/day locks, and optional Apple Health
+reads for workouts, sleep, HRV, resting heart rate, steps/active energy and body
+measurements. Complete selected-program verification precedes adaptive activation.
+This supersedes earlier exclusions for user-authored programming and private-build
+Health collection in the newly planned flow, without approving training rules,
+recovery interpretations or broader population eligibility. The previous owner
+manual logger remains unchanged. Current implementation and remaining work are
+listed in `PERSONALIZED_ONBOARDING_STATUS.md`.

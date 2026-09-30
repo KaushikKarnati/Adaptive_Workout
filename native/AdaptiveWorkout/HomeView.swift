@@ -13,7 +13,8 @@ struct HomeView: View {
   init(controller: ProgramLogController, model: AppModel) {
     self.controller = controller
     self.model = model
-    _setup = StateObject(wrappedValue: SetupModel(directory: model.directory))
+    _setup = StateObject(
+      wrappedValue: SetupModel(directory: model.directory, profileId: controller.profile))
   }
   var body: some View {
     VStack(spacing: 0) {
@@ -61,7 +62,8 @@ struct HomeView: View {
           }
         }
         SettingsView(
-          directory: model.directory, notifications: model.notifications,
+          directory: model.directory, existingOwner: model.hasLegacyWorkouts,
+          notifications: model.notifications,
           exerciseReferences: model.exerciseReferences, setupModel: setup,
           appearance: model.appearanceBinding,
           hapticsEnabled: model.hapticsBinding, cue: model.cue
@@ -579,18 +581,23 @@ struct WorkoutView: View {
       .accessibilityIdentifier("calibration_progress_banner")
   }
   private var dashboard: some View {
-    StitchDashboard(
-      logs: controller.logs, profile: controller.profile, draft: controller.draft,
-      minutes: setup.saved?.preferredMinutes, locked: controller.locked,
-      start: { choose(nextManualPlan(controller.logs, profile: controller.profile)) },
-      choose: { choosing = true }, duration: { durationSheet = true }, facility: profile,
-      open: { log in
-        controller.select(log.id)
-        hub = false
-        reviewCompleted = false
-      }
-    )
-    .onAppear { setup.load() }
+    VStack(alignment: .leading, spacing: 12) {
+      Button("Personalize training · resume setup") { model.showingTrainingSetup = true }
+        .font(.subheadline).frame(minHeight: 44)
+        .accessibilityIdentifier("personalized_setup")
+      StitchDashboard(
+        logs: controller.logs, profile: controller.profile, draft: controller.draft,
+        minutes: setup.saved?.preferredMinutes, locked: controller.locked,
+        start: { choose(nextManualPlan(controller.logs, profile: controller.profile)) },
+        choose: { choosing = true }, duration: { durationSheet = true }, facility: profile,
+        open: { log in
+          controller.select(log.id)
+          hub = false
+          reviewCompleted = false
+        }
+      )
+      .onAppear { setup.load() }
+    }
   }
   private var sessionSelection: some View {
     VStack(alignment: .leading, spacing: 12) {

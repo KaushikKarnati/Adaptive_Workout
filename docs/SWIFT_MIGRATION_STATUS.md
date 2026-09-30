@@ -649,3 +649,48 @@ Validation completed:
   for this source-import slice. The new-user generate/save/reopen acceptance flow
   remains incomplete, pending reviewed metadata, durable verified inputs and the
   atomic production adapter.
+
+## September 30 — personalized onboarding foundation
+
+Implemented native resumable profile preferences and structured program drafts,
+separate immutable SQLite profile revisions, preference export/restore, and
+optional read-only HealthKit collection. New normal-store profiles get their own
+manual-log scope; existing owner records retain `local_owner`. Setup preparation
+uses the active logging profile instead of inheriting owner evidence. Detailed
+scope and unfinished plan phases: `PERSONALIZED_ONBOARDING_STATUS.md`.
+
+Current-run verification:
+
+- Required strict recursive Swift lint: passed, no diagnostics.
+- `swift build --build-tests --package-path native/Packages/WorkoutCore`: passed.
+- `swift test --package-path native/Packages/WorkoutCore`: 154 tests passed.
+  New fixtures cover blank profiles, all ten persisted progress steps, revision
+  conflicts/retries/reopen/isolation, invalid fields, permanent activation gates,
+  missing/duplicate/nonfinite Health inputs and overlapping sleep records.
+- Generic iOS build with `CODE_SIGNING_ALLOWED=NO`: BUILD SUCCEEDED.
+- Generic iOS static analysis with signing disabled: ANALYZE SUCCEEDED.
+- Explicit iPhone 17 Pro simulator destination
+  `11CA8B0D-1BBC-41FC-A1D5-865B6A47455B`: four targeted UI scenarios passed
+  (fresh onboarding, setup restart, ordinary launch, and existing workout
+  save/restart/correction/finish/history/delete). A final fresh-onboarding rerun
+  after setup profile scoping passed separately.
+- Simulator commands used isolated derived data, `ONLY_ACTIVE_ARCH=YES ARCHS=arm64`
+  and disposable fixture stores. Initial mixed-architecture module failures were
+  resolved by explicitly using arm64. An initial picker locator failure was
+  corrected with a stable accessibility identifier. A global setup inset caused
+  a History visibility regression; setup entry was moved into the dashboard,
+  and the existing end-to-end workout regression then passed.
+- `git diff --check`: passed. Existing untracked `ios/` was not changed.
+
+The generic build retains the existing App Intents metadata warning because the
+app has no AppIntents.framework dependency. No App Intents feature is added.
+No third-party dependency is added. Physical-device HealthKit provisioning,
+authorization, actual sample import, airplane mode, VoiceOver, Dynamic Type,
+haptic comfort, export/restore interaction and real-data transfer acceptance
+were not established by these checks.
+
+This is not completion of the full adaptive-training plan. Authoritative setup
+capture, review approvals, executable edited programs, atomic generation/save,
+recovery policy/shadow activation, multi-environment onboarding and new training
+analytics remain unfinished. Production generation remains unregistered and all
+new profiles remain blocked for adaptive execution.

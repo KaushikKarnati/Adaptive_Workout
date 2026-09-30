@@ -4,6 +4,7 @@ import WorkoutPersistence
 
 struct SettingsView: View {
   let directory: URL
+  var existingOwner = false
   @ObservedObject var notifications: WorkoutNotifications
   let exerciseReferences: [WgerReference]
   @ObservedObject var setupModel: SetupModel
@@ -16,6 +17,11 @@ struct SettingsView: View {
         Section {
           Text("Make it yours.").font(.title2.bold())
           Text("Your preferences and training, in one place.").foregroundStyle(.secondary)
+        }
+        Section {
+          NavigationLink("Personalized training setup") {
+            OnboardingView(directory: directory, existingOwner: existingOwner)
+          }
         }
         Section {
           DisclosureGroup("Appearance and feedback") {

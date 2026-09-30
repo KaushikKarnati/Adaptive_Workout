@@ -12,6 +12,11 @@ struct AdaptiveWorkoutApp: App {
       Group {
         if let controller = model.controller {
           HomeView(controller: controller, model: model)
+            .sheet(isPresented: $model.showingTrainingSetup) {
+              NavigationStack {
+                OnboardingView(directory: model.directory, existingOwner: model.hasLegacyWorkouts)
+              }
+            }
         } else {
           VStack(spacing: 20) {
             Text("Adaptive Workout").font(.largeTitle.bold())
@@ -23,7 +28,12 @@ struct AdaptiveWorkoutApp: App {
       .preferredColorScheme(
         model.appearance == "system" ? nil : model.appearance == "dark" ? .dark : .light
       )
-      .task { if model.controller == nil { model.open() } }
+      .task {
+        if model.controller == nil {
+          model.open()
+          model.showingTrainingSetup = model.needsOnboarding
+        }
+      }
     }
   }
 }
@@ -33,6 +43,9 @@ final class AppModel: ObservableObject {
   @Published var controller: ProgramLogController?
   @Published var adaptiveController: AdaptiveGenerationController?
   @Published var error: String?
+  @Published var showingTrainingSetup = false
+  @Published private(set) var needsOnboarding = false
+  @Published private(set) var hasLegacyWorkouts = false
   @Published private(set) var exerciseReferences: [WgerReference] = []
   @Published private(set) var appearance = "system"
   @Published private(set) var hapticsEnabled = true
@@ -76,6 +89,27 @@ final class AppModel: ObservableObject {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
       let stores = try LocalAppStores(directory: directory)
       controller = ProgramLogController(repository: stores.programLogs)
+      let profiles = try SqliteUserTrainingProfileRepository(
+        path: directory.appendingPathComponent("user_profiles.sqlite").path)
+      var currentProfile = try profiles.currentProfile()
+      hasLegacyWorkouts = !(try stores.programLogs.load("local_owner")).isEmpty
+      let usesOnboardingProfile =
+        context.preferencesDomain == nil
+        || (allowsTesting && context.preferencesDomain != nil
+          && ProcessInfo.processInfo.arguments.contains("--onboarding-flow"))
+      needsOnboarding = usesOnboardingProfile && currentProfile == nil && !hasLegacyWorkouts
+      if usesOnboardingProfile {
+        if currentProfile == nil {
+          let fresh =
+            hasLegacyWorkouts ? UserTrainingProfile(id: "local_owner") : UserTrainingProfile()
+          try profiles.save(fresh, expectedRevision: nil)
+          currentProfile = fresh
+        }
+        if let currentProfile {
+          controller = ProgramLogController(
+            repository: stores.programLogs, profile: currentProfile.id)
+        }
+      }
 
       // ADR 0014: do not register generation or resume unverified prescriptions.
       // Stored records remain intact while catalog, safety and atomic input

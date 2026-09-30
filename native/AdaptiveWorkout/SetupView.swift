@@ -16,8 +16,12 @@ import WorkoutPersistence
   private var pendingExclusion: String?
   private var controller: TrainingSetupController?
   private let path: String
+  private let profileId: String
   var locked: Bool { pending || !loaded }
-  init(directory: URL) { path = directory.appendingPathComponent("training_setup.sqlite").path }
+  init(directory: URL, profileId: String = "local_owner") {
+    path = directory.appendingPathComponent("training_setup.sqlite").path
+    self.profileId = profileId
+  }
   private func sync() {
     saved = controller?.saved
     loaded = controller?.loaded ?? false
@@ -29,7 +33,7 @@ import WorkoutPersistence
     do {
       if controller == nil {
         controller = TrainingSetupController(
-          repository: try SqliteTrainingSetupRepository(path: path))
+          repository: try SqliteTrainingSetupRepository(path: path), profileId: profileId)
       }
       controller?.load()
       sync()

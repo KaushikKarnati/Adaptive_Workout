@@ -382,3 +382,18 @@ the saved log. Rest alert cancellation follows timer clearing and workout change
 The offline wger reference and opt-in alert settings are available from Profile.
 See [release loop status](RELEASE_LOOP_STATUS.md) for remaining generation and
 progression requirements.
+
+## Personalized onboarding foundation — September 30
+
+Native setup now stores `UserTrainingProfile` preferences, progress and structured
+program drafts through a separate revisioned SQLite repository. These values are
+reported intent, not verified training evidence. New-user profiles are isolated
+from existing owner records; legacy history is never reidentified. Export/restore
+covers preferences/drafts only. See `PERSONALIZED_ONBOARDING_STATUS.md` for exact
+implemented and unresolved behavior.
+
+The native read-only HealthKit adapter normalizes selected observations into pure
+`HealthSnapshot` values. HealthKit stays outside WorkoutDomain; observations stay
+in memory and cannot affect prescriptions. Source overlap and missing data remain
+explicit. Recovery policy review is required before adaptation. The current
+production generation adapter remains unavailable; onboarding cannot unlock it.
