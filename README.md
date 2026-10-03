@@ -2,6 +2,10 @@
 
 Native iOS app written in Swift and SwiftUI, with an offline SQLite store and a deterministic workout engine. iOS comes first; Android is deferred.
 
+[![Adaptive Workout development network: milestones, features, rules, records, gates and future work](docs/assets/development-network.png)](docs/DEVELOPMENT_MAP.md)
+
+**Explore the development network** — [78 nodes and 193 connections](docs/DEVELOPMENT_MAP.md), from the first prototype to the native app and the remaining adaptive-engine work. October 3, 2026 snapshot; local and planned work is labeled separately.
+
 ## Open in Xcode
 
 ```sh
